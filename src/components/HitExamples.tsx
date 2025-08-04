@@ -1,6 +1,7 @@
 // Hit Component Examples - Different structures for different data types
 
 import React from "react";
+import Image from "next/image";
 
 // =============================================================================
 // EXAMPLE 1: Basic Product Hit (E-commerce)
@@ -25,7 +26,7 @@ function ProductHitComponent({ hit }: { hit: ProductHit }) {
       {/* Product Image */}
       {hit.image && (
         <div className="mr-4 flex-shrink-0">
-          <img
+          <Image
             src={hit.image}
             alt={hit.name}
             className="h-24 w-24 rounded-lg object-cover"
@@ -46,7 +47,7 @@ function ProductHitComponent({ hit }: { hit: ProductHit }) {
           {/* Price */}
           <div className="text-right">
             <p className="text-xl font-bold text-green-600">
-              {hit.currency || "$"}
+              {hit.currency ?? "$"}
               {hit.price}
             </p>
             {/* Stock Status */}
@@ -73,7 +74,7 @@ function ProductHitComponent({ hit }: { hit: ProductHit }) {
         {hit.rating && (
           <div className="mt-2 flex items-center">
             <div className="flex items-center">
-              {[...Array(5)].map((_, i) => (
+              {Array.from({ length: 5 }).map((_, i: number) => (
                 <svg
                   key={i}
                   className={`h-4 w-4 ${
@@ -88,7 +89,7 @@ function ProductHitComponent({ hit }: { hit: ProductHit }) {
                 </svg>
               ))}
               <span className="ml-1 text-sm text-gray-500">
-                ({hit.reviews_count || 0} reviews)
+                ({hit.reviews_count ?? 0} reviews)
               </span>
             </div>
           </div>
@@ -272,7 +273,7 @@ function ArticleHitComponent({ hit }: { hit: ArticleHit }) {
       {/* Featured Image */}
       {hit.featured_image && (
         <div className="mb-4">
-          <img
+          <Image
             src={hit.featured_image}
             alt={hit.title}
             className="h-48 w-full rounded-lg object-cover"
