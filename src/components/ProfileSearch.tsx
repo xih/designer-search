@@ -24,7 +24,7 @@ interface ProfileSearchProps {
 // Loading fallback component
 function SearchLoadingFallback({ placeholder, className }: Pick<ProfileSearchProps, 'placeholder' | 'className'>) {
   return (
-    <div className={`container mx-auto px-4 py-8 ${className || ''}`}>
+    <div className={`container mx-auto px-4 py-8 ${className ?? ''}`}>
       <div className="mb-8 max-w-2xl mx-auto">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -32,7 +32,7 @@ function SearchLoadingFallback({ placeholder, className }: Pick<ProfileSearchPro
           </div>
           <Input
             type="text"
-            placeholder={placeholder || "Search profiles..."}
+            placeholder={placeholder ?? "Search profiles..."}
             className="pl-10 pr-10 py-3 text-lg rounded-full border-2"
             disabled
             readOnly

@@ -9,21 +9,13 @@ interface ProfileHitMasonryProps {
   index?: number;
 }
 
-export function ProfileHitMasonry({ hit, index }: ProfileHitMasonryProps) {
+export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
-  // Debug logging for ProfileHitMasonry
-  console.log(`🎴 ProfileHitMasonry ${index}:`, {
-    hasHit: !!hit,
-    hitName: hit?.name,
-    hitId: hit?.id,
-    hitKeys: hit ? Object.keys(hit).slice(0, 10) : "no hit",
-  });
 
   // Handle case where hit is undefined
   if (!hit) {
-    console.log(`❌ ProfileHitMasonry ${index}: No hit data, showing placeholder`);
     return (
       <div className="rounded-xl border bg-white p-4 shadow-sm min-h-[300px] animate-pulse">
         <div className="flex justify-center mb-4">
@@ -33,9 +25,6 @@ export function ProfileHitMasonry({ hit, index }: ProfileHitMasonryProps) {
           <div className="h-4 bg-gray-200 rounded mx-4"></div>
           <div className="h-3 bg-gray-200 rounded mx-8"></div>
           <div className="h-3 bg-gray-200 rounded mx-6"></div>
-        </div>
-        <div className="text-xs text-red-500 mt-2 text-center">
-          Debug: No hit data for index {index}
         </div>
       </div>
     );
@@ -63,12 +52,10 @@ export function ProfileHitMasonry({ hit, index }: ProfileHitMasonryProps) {
   const showFallback = !isValidUrl(hit.profilePhotoUrl) || imageError;
 
   // Determine card height based on content
-  const hasExtendedContent = (hit.about && hit.about.length > 100) || 
-                           (hit.skills && hit.skills.length > 6) ||
-                           (hit.companies && hit.companies.length > 3) ||
+  const hasExtendedContent = (hit.about && hit.about.length > 100) ?? 
+                           (hit.skills && hit.skills.length > 6) ??
+                           (hit.companies && hit.companies.length > 3) ??
                            (hit.project_names && hit.project_names.length > 3);
-
-  console.log(`✅ ProfileHitMasonry ${index}: Rendering card with data`);
 
   return (
     <div 
@@ -77,10 +64,6 @@ export function ProfileHitMasonry({ hit, index }: ProfileHitMasonryProps) {
         ${hasExtendedContent ? 'min-h-[400px]' : 'min-h-[300px]'}
       `}
     >
-      {/* Debug info - remove after fixing */}
-      <div className="text-xs text-blue-500 mb-2 text-center border-b pb-2">
-        Debug: Index {index}, ID: {hit.id || "no-id"}
-      </div>
       {/* Profile Avatar - Centered */}
       <div className="relative mb-4 flex justify-center">
         {showProfileImage && (
