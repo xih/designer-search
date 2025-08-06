@@ -23,29 +23,42 @@ const typesenseInstantSearchAdapter = new TypesenseInstantSearchAdapter({
   },
 });
 
-const typesenseInstantSearchAdapter2 = new TypesenseInstantSearchAdapter({
-  server: {
-    apiKey: process.env.NEXT_PUBLIC_TYPESENSE_API_KEY2!, // Be sure to use an API key that only allows search operations
-    nodes: [
-      {
-        host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2!,
-        port: parseInt(process.env.NEXT_PUBLIC_TYPESENSE_PORT2!),
-        path: process.env.NEXT_PUBLIC_TYPESENSE_PATH2 ?? "", // Optional. Example: If you have your typesense mounted in localhost:8108/typesense, path should be equal to '/typesense'
-        protocol: process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL2!,
-      },
-    ],
-    cacheSearchResultsForSeconds: 2 * 60, // Cache search results from server. Defaults to 2 minutes. Set to 0 to disable caching.
-  },
-  // The following parameters are directly passed to Typesense's search API endpoint.
-  //  So you can pass any parameters supported by the search endpoint below.
-  //  query_by is required.
-  additionalSearchParameters: {
-    // query_by:
-    //   process.env.NEXT_PUBLIC_TYPESENSE_QUERY_BY ?? SEARCHABLE_FIELDS.join(","),
-    query_by: SEARCHABLE_FIELDS.join(","),
-    per_page: 250,
-    max_candidates: 10000,
-  },
-});
+// Try to use adapter2 first (with *2 env vars), fallback to adapter1
+const getTypesenseAdapter = () => {
+  // Check if *2 environment variables are available
+  const hasAdapter2Config = 
+    process.env.NEXT_PUBLIC_TYPESENSE_API_KEY2 && 
+    process.env.NEXT_PUBLIC_TYPESENSE_HOST2 && 
+    process.env.NEXT_PUBLIC_TYPESENSE_PORT2 && 
+    process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL2;
 
-export const searchClient = typesenseInstantSearchAdapter2.searchClient;
+  if (hasAdapter2Config) {
+    console.log("🚀 Using Typesense Adapter 2 (with *2 env vars)");
+    const adapter2 = new TypesenseInstantSearchAdapter({
+      server: {
+        apiKey: process.env.NEXT_PUBLIC_TYPESENSE_API_KEY2!,
+        nodes: [
+          {
+            host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2!,
+            port: parseInt(process.env.NEXT_PUBLIC_TYPESENSE_PORT2!),
+            path: process.env.NEXT_PUBLIC_TYPESENSE_PATH2 ?? "",
+            protocol: process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL2!,
+          },
+        ],
+        cacheSearchResultsForSeconds: 2 * 60,
+      },
+      additionalSearchParameters: {
+        query_by: SEARCHABLE_FIELDS.join(","),
+        per_page: 250,
+        max_candidates: 10000,
+      },
+    });
+    return adapter2;
+  } else {
+    console.log("🚀 Using Typesense Adapter 1 (with standard env vars)");
+    return typesenseInstantSearchAdapter;
+  }
+};
+
+const selectedAdapter = getTypesenseAdapter();
+export const searchClient = selectedAdapter.searchClient;
