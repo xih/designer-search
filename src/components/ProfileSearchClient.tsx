@@ -3,12 +3,12 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   InstantSearch,
-  Pagination,
   Stats,
   SortBy,
+  Configure,
   useInstantSearch,
   useSearchBox,
-  useHits,
+  useInfiniteHits,
 } from "react-instantsearch";
 import { Masonry } from "masonic";
 import useMeasure from "react-use-measure";
@@ -16,6 +16,8 @@ import { searchClient } from "~/lib/typesense";
 import { ProfileHitMasonry } from "./ProfileHitMasonry";
 import { FilterModal, FilterButton } from "./FilterModal";
 import { TypesenseDebugger } from "./TypesenseDebugger";
+import { ViewSwitcher, type ViewType } from "./ViewSwitcher";
+import { ProfileDataTable } from "./ProfileDataTable";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search } from "lucide-react";
 import { Input } from "~/components/ui/input";
@@ -104,109 +106,66 @@ function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
   );
 }
 
-// Custom Masonry Hits component
-function MasonryHits() {
-  const { items: hitsItems } = useHits<ProfileHitOptional>();
-  const { status, results, error } = useInstantSearch();
+// Custom Infinite Masonry Hits component
+function InfiniteMasonryHits() {
+  const {
+    items: hitsItems,
+    isLastPage,
+    showMore,
+  } = useInfiniteHits<ProfileHitOptional>();
+  const { status } = useInstantSearch();
   const [ref, { width }] = useMeasure();
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Debug logging
+  // Handle infinite scroll loading
+  const handleShowMore = useCallback(() => {
+    if (isLoadingMore || isLastPage) return;
+
+    setIsLoadingMore(true);
+    showMore();
+    // Reset loading state after a longer delay to allow results to load
+    setTimeout(() => setIsLoadingMore(false), 800);
+  }, [showMore, isLastPage, isLoadingMore]);
+
+  // Intersection observer for infinite scroll
+  const [loadMoreRef, setLoadMoreRef] = useState<HTMLDivElement | null>(null);
+
   useEffect(() => {
-    console.log("🔍 InstantSearch Debug Info:", {
-      status,
-      hits: hitsItems ? hitsItems.length : "null/undefined",
-      results: results
-        ? {
-            nbHits: results.nbHits,
-            query: results.query,
-            processingTimeMS: results.processingTimeMS,
-            // Check if hits are nested in results
-            resultsHits: results.hits
-              ? results.hits.length
-              : "no hits in results",
-          }
-        : "null",
-      error: error ? error.message : "none",
-    });
+    if (!loadMoreRef || isLastPage) return;
 
-    // Deep dive into results structure
-    if (results) {
-      console.log(
-        "🔬 Full results structure:",
-        JSON.stringify(results, null, 2),
-      );
-    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && !isLoadingMore) {
+          handleShowMore();
+        }
+      },
+      { threshold: 0.1 },
+    );
 
-    if (hitsItems && hitsItems.length > 0) {
-      console.log("📄 First hit sample:", hitsItems[0]);
-      console.log(
-        "📄 Hit data structure:",
-        JSON.stringify(hitsItems[0], null, 2),
-      );
-    } else if (hitsItems && hitsItems.length === 0) {
-      console.log("⚠️ Hits array is empty despite results showing data");
-    }
-  }, [hitsItems, status, results, error]);
+    observer.observe(loadMoreRef);
+    return () => observer.disconnect();
+  }, [loadMoreRef, isLastPage, isLoadingMore, handleShowMore]);
 
   const masonryItems = useMemo(() => {
-    // Try to get hits from multiple sources
-    let dataHits: ProfileHitOptional[] = hitsItems;
-
-    // Fallback: try to get hits from results if hits is null
-    if (!dataHits && results?.hits) {
-      console.log("🔄 Using results.hits as fallback");
-      dataHits = results.hits as unknown as ProfileHitOptional[];
-    }
-
-    console.log("🎯 Processing masonry items:", {
-      hitsExists: !!dataHits,
-      hitsIsArray: Array.isArray(dataHits),
-      hitsLength: dataHits?.length,
-      resultsHitsExists: !!results?.hits,
-      resultsHitsLength: results?.hits?.length,
-    });
-
-    if (!dataHits || !Array.isArray(dataHits)) {
-      console.log("❌ No hits or not array, returning empty array");
+    if (!hitsItems || !Array.isArray(hitsItems)) {
       return [];
     }
 
-    const masonryItemsList = dataHits.map((hit, index) => {
-      // Typesense hits might be nested in a 'document' property
-      const actualHit = hit;
-
-      console.log(`📋 Processing hit ${index}:`, {
-        hasDocument: !!actualHit,
-        hasId: !!actualHit?.id,
-        hasName: !!actualHit?.name,
-        hitKeys: actualHit ? Object.keys(actualHit).slice(0, 10) : "null hit",
-        rawHitKeys: hit ? Object.keys(hit).slice(0, 5) : "null",
-      });
-
-      return {
-        id: actualHit?.id || index.toString(),
-        hit: actualHit,
-        index,
-      };
-    });
-
-    console.log("✅ Generated masonry items:", masonryItemsList.length);
-    return masonryItemsList;
-  }, [hitsItems, results]);
+    return hitsItems.map((hit, index) => ({
+      id: hit?.id ?? index.toString(),
+      hit: hit,
+      index,
+    }));
+  }, [hitsItems]);
 
   const renderMasonryItem = useCallback(
     ({
-      index,
       data,
     }: {
       index: number;
       data: { hit: ProfileHitOptional; index: number };
     }) => {
-      console.log(`🖼️ Rendering masonry item ${index}:`, {
-        dataExists: !!data,
-        hitExists: !!data?.hit,
-        hitName: data?.hit?.name,
-      });
       return <ProfileHitMasonry hit={data.hit} index={data.index} />;
     },
     [],
@@ -249,44 +208,50 @@ function MasonryHits() {
     );
   }
 
-  console.log("📐 Masonry render decision:", {
-    containerWidth: width,
-    itemsCount: masonryItems.length,
-    willUseMasonry: width > 0 && masonryItems.length > 0,
-  });
-
   return (
     <div ref={ref} className="w-full">
       {width > 0 ? (
-        <>
-          <div className="mb-4 text-sm text-gray-600">
-            🎨 Masonry Layout: {masonryItems.length} items, {width}px width
-          </div>
-          <Masonry
-            items={masonryItems}
-            render={renderMasonryItem}
-            columnGutter={16}
-            columnWidth={280}
-            overscanBy={2}
-            itemKey={(item) => item.id}
-          />
-        </>
+        <Masonry
+          items={masonryItems}
+          render={renderMasonryItem}
+          columnGutter={16}
+          columnWidth={280}
+          overscanBy={2}
+          itemKey={(item) => item.id}
+        />
       ) : (
         // Fallback grid layout while measuring
-        <>
-          <div className="mb-4 text-sm text-gray-600">
-            📐 Grid Layout: {masonryItems.length} items, measuring width...
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {masonryItems.map((item) => (
-              <ProfileHitMasonry
-                key={item.id}
-                hit={item.hit}
-                index={item.index}
-              />
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {masonryItems.map((item) => (
+            <ProfileHitMasonry
+              key={item.id}
+              hit={item.hit}
+              index={item.index}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Infinite scroll trigger and loading indicator */}
+      {!isLastPage && (
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <div ref={setLoadMoreRef} className="h-4 w-full" />
+          {isLoadingMore ? (
+            <div className="flex items-center gap-3 text-blue-600">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              <span className="text-sm font-medium">
+                Loading more profiles...
+              </span>
+            </div>
+          ) : (
+            <button
+              onClick={handleShowMore}
+              className="rounded-full border-2 border-blue-600 bg-white px-6 py-2 text-blue-600 transition-colors hover:border-blue-700 hover:bg-blue-50"
+            >
+              Show More
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
@@ -299,6 +264,7 @@ export default function ProfileSearchClient({
   className = "",
 }: ProfileSearchProps) {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<ViewType>("masonry");
 
   const collectionName =
     indexName ??
@@ -336,7 +302,15 @@ export default function ProfileSearchClient({
             query: "",
           },
         }}
+        insights={true}
       >
+        {/* Configure search parameters */}
+        <Configure
+          hitsPerPage={50}
+          maxValuesPerFacet={1000}
+          enablePersonalization={false}
+        />
+
         {/* Search Header */}
         <div className="mx-auto mb-8 max-w-2xl">
           <DebouncedSearchBox placeholder={placeholder} />
@@ -357,47 +331,40 @@ export default function ProfileSearchClient({
             )}
           </div>
 
-          {/* Right side - Sort Options */}
-          <SortBy
-            items={[
-              { label: "Most Recent", value: collectionName },
-              {
-                label: "Most Followers",
-                value: `${collectionName}/sort/followers_count:desc`,
-              },
-              {
-                label: "Oldest First",
-                value: `${collectionName}/sort/profile_created_at:asc`,
-              },
-            ]}
-            classNames={{
-              root: "min-w-[180px]",
-              select:
-                "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
-            }}
-          />
+          {/* Right side - View Switcher and Sort Options */}
+          <div className="flex items-center gap-4">
+            <ViewSwitcher
+              currentView={currentView}
+              onViewChange={setCurrentView}
+            />
+            <SortBy
+              items={[
+                { label: "Most Recent", value: collectionName },
+                {
+                  label: "Most Followers",
+                  value: `${collectionName}/sort/followers_count:desc`,
+                },
+                {
+                  label: "Oldest First",
+                  value: `${collectionName}/sort/profile_created_at:asc`,
+                },
+              ]}
+              classNames={{
+                root: "min-w-[180px]",
+                select:
+                  "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
+              }}
+            />
+          </div>
         </div>
 
-        {/* Masonry Results */}
+        {/* Results */}
         <div className="mb-8">
-          <MasonryHits />
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-center">
-          <Pagination
-            classNames={{
-              root: "flex items-center space-x-1",
-              list: "flex items-center space-x-1",
-              item: "rounded-full border-2 border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors",
-              link: "px-4 py-2 text-blue-600 hover:text-blue-800 font-medium",
-              selectedItem:
-                "bg-blue-600 border-blue-600 text-white hover:bg-blue-700 hover:border-blue-700",
-              disabledItem: "opacity-50 cursor-not-allowed",
-              previousPageItem: "rounded-full",
-              nextPageItem: "rounded-full",
-            }}
-          />
+          {currentView === "masonry" ? (
+            <InfiniteMasonryHits />
+          ) : (
+            <ProfileDataTable />
+          )}
         </div>
 
         {/* Filter Modal */}

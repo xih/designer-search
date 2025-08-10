@@ -20,16 +20,20 @@ const typesenseInstantSearchAdapter = new TypesenseInstantSearchAdapter({
   additionalSearchParameters: {
     query_by:
       process.env.NEXT_PUBLIC_TYPESENSE_QUERY_BY ?? SEARCHABLE_FIELDS.join(","),
+    per_page: 250,
+    max_hits: 10000,
+    limit_hits: 10000,
+    exhaustive_search: true,
   },
 });
 
 // Try to use adapter2 first (with *2 env vars), fallback to adapter1
 const getTypesenseAdapter = () => {
   // Check if *2 environment variables are available
-  const hasAdapter2Config = 
-    process.env.NEXT_PUBLIC_TYPESENSE_API_KEY2 && 
-    process.env.NEXT_PUBLIC_TYPESENSE_HOST2 && 
-    process.env.NEXT_PUBLIC_TYPESENSE_PORT2 && 
+  const hasAdapter2Config =
+    process.env.NEXT_PUBLIC_TYPESENSE_API_KEY2 &&
+    process.env.NEXT_PUBLIC_TYPESENSE_HOST2 &&
+    process.env.NEXT_PUBLIC_TYPESENSE_PORT2 &&
     process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL2;
 
   if (hasAdapter2Config) {
@@ -50,7 +54,9 @@ const getTypesenseAdapter = () => {
       additionalSearchParameters: {
         query_by: SEARCHABLE_FIELDS.join(","),
         per_page: 250,
-        max_candidates: 10000,
+        max_hits: 10000,
+        limit_hits: 10000,
+        exhaustive_search: true,
       },
     });
     return adapter2;
@@ -61,4 +67,17 @@ const getTypesenseAdapter = () => {
 };
 
 const selectedAdapter = getTypesenseAdapter();
+
+// Debug logging to check configuration
+console.log("🔧 Typesense Adapter Configuration:", {
+  hasAdapter2Config: !!(
+    process.env.NEXT_PUBLIC_TYPESENSE_API_KEY2 &&
+    process.env.NEXT_PUBLIC_TYPESENSE_HOST2 &&
+    process.env.NEXT_PUBLIC_TYPESENSE_PORT2 &&
+    process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL2
+  ),
+  adapter: selectedAdapter,
+  searchParameters: selectedAdapter.additionalSearchParameters,
+});
+
 export const searchClient = selectedAdapter.searchClient;
