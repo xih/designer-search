@@ -61,13 +61,13 @@ export function ProfileCard({ profile }: ProfileCardProps) {
         </div>
       )}
 
-      {/* Bio */}
-      {profile.bio && (
+      {/* Bio - commented out since not in ProfileHitOptional type */}
+      {/* {profile.bio && (
         <div>
           <h4 className="text-sm font-medium text-gray-700">Bio</h4>
           <p className="text-sm text-gray-600 line-clamp-3">{profile.bio}</p>
         </div>
-      )}
+      )} */}
 
       {/* Followers */}
       {profile.followers_count !== undefined && profile.followers_count > 0 && (

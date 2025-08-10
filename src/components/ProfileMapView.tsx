@@ -2,13 +2,12 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { useInfiniteHits, useInstantSearch } from "react-instantsearch";
-import Map from "react-map-gl/mapbox";
-import DeckGL from "@deck.gl/react";
+import { Map, useControl } from "react-map-gl/mapbox";
+import { MapboxOverlay } from "@deck.gl/mapbox";
 import { ScatterplotLayer, IconLayer } from "@deck.gl/layers";
-import { WebMercatorViewport } from "@deck.gl/core";
+import { DeckProps } from "@deck.gl/core";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { ProfileCard } from "./ProfileCard";
-import Image from "next/image";
 
 interface ProfileMapViewProps {
   onProfileSelect?: (profile: ProfileHitOptional) => void;
@@ -17,6 +16,12 @@ interface ProfileMapViewProps {
 interface MapProfile extends ProfileHitOptional {
   longitude: number;
   latitude: number;
+}
+
+function DeckGLOverlay(props: DeckProps) {
+  const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay(props));
+  overlay.setProps(props);
+  return null;
 }
 
 // Simple geocoding mock - in real app, you'd use a proper geocoding service
@@ -66,13 +71,6 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const { status } = useInstantSearch();
   const [selectedProfile, setSelectedProfile] =
     useState<ProfileHitOptional | null>(null);
-  const [viewState, setViewState] = useState({
-    longitude: -122.4194,
-    latitude: 37.7749,
-    zoom: 2,
-    pitch: 0,
-    bearing: 0,
-  });
 
   // Process profiles and add coordinates
   const mapProfiles = useMemo(() => {
@@ -88,16 +86,17 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       if (coords) {
         // Track how many profiles are in each location for clustering
         const locationKey = `${coords.lat},${coords.lng}`;
-        locationCounts[locationKey] = (locationCounts[locationKey] || 0) + 1;
+        locationCounts[locationKey] = (locationCounts[locationKey] ?? 0) + 1;
 
-        // Add some random offset for profiles in the same city
-        const offset = locationCounts[locationKey] * 0.01;
-        const angle = locationCounts[locationKey] * 137.5 * (Math.PI / 180); // Golden angle
+        // Add small offset for profiles in the same city to prevent overlap
+        const offset = (locationCounts[locationKey] - 1) * 0.005; // Smaller offset
+        const angle =
+          (locationCounts[locationKey] - 1) * 137.5 * (Math.PI / 180); // Golden angle
 
         profilesWithCoords.push({
           ...profile,
-          longitude: coords.lng,
-          latitude: coords.lat,
+          longitude: coords.lng + Math.cos(angle) * offset,
+          latitude: coords.lat + Math.sin(angle) * offset,
         });
       }
     });
@@ -113,61 +112,36 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     [onProfileSelect],
   );
 
-  const iconLayer = new IconLayer({
-    id: "profile-icons",
-    data: mapProfiles,
-    pickable: true,
-    iconAtlas: "/api/map-icons", // We'll need to create this endpoint or use a CDN
-    iconMapping: {
-      marker: {
-        x: 0,
-        y: 0,
-        width: 128,
-        height: 128,
-        mask: true,
-      },
-    },
-    getIcon: () => "marker",
-    sizeScale: 15,
-    getPosition: (d: MapProfile) => [d.longitude, d.latitude],
-    getSize: () => 5,
-    getColor: () => [29, 78, 216, 255], // Blue color
-    onHover: ({ object, x, y }) => {
-      // You can add hover effects here
-    },
-    onClick: ({ object }) => {
-      if (object) {
-        handleProfileClick(object as ProfileHitOptional);
-      }
-    },
-  });
-
-  // Fallback to scatter plot if icon atlas fails
-  const scatterplotLayer = new ScatterplotLayer({
-    id: "profile-scatter",
-    data: mapProfiles,
-    pickable: true,
-    opacity: 0.8,
-    stroked: true,
-    filled: true,
-    radiusScale: 6,
-    radiusMinPixels: 8,
-    radiusMaxPixels: 100,
-    lineWidthMinPixels: 1,
-    getPosition: (d: MapProfile) => [d.longitude, d.latitude],
-    getRadius: () => 30,
-    getFillColor: () => [29, 78, 216, 160],
-    getLineColor: () => [255, 255, 255, 255],
-    onClick: ({ object }) => {
-      if (object) {
-        handleProfileClick(object as ProfileHitOptional);
-      }
-    },
-  });
+  const layers = useMemo(
+    () => [
+      new ScatterplotLayer({
+        id: "profile-scatter",
+        data: mapProfiles,
+        pickable: true,
+        opacity: 0.8,
+        stroked: true,
+        filled: true,
+        radiusScale: 1,
+        radiusMinPixels: 12,
+        radiusMaxPixels: 40,
+        lineWidthMinPixels: 2,
+        getPosition: (d: MapProfile) => [d.longitude, d.latitude],
+        getRadius: 20,
+        getFillColor: [29, 78, 216, 200],
+        getLineColor: [255, 255, 255, 255],
+        onClick: ({ object }) => {
+          if (object) {
+            handleProfileClick(object as ProfileHitOptional);
+          }
+        },
+      }),
+    ],
+    [mapProfiles, handleProfileClick],
+  );
 
   if (status === "loading" && mapProfiles.length === 0) {
     return (
-      <div className="flex h-[600px] items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
         <div className="flex items-center gap-3 text-blue-600">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
           <span className="text-sm font-medium">Loading map...</span>
@@ -178,7 +152,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
 
   if (status === "error") {
     return (
-      <div className="flex h-[600px] items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="text-lg text-red-500">Error loading map data</div>
           <div className="mt-2 text-sm text-gray-400">
@@ -191,7 +165,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
 
   if (mapProfiles.length === 0) {
     return (
-      <div className="flex h-[600px] items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="text-lg text-gray-500">
             No profiles with locations found
@@ -205,58 +179,24 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   }
 
   return (
-    <div className="relative h-[600px] w-full">
-      <DeckGL
-        viewState={viewState}
-        onViewStateChange={({ viewState }) => setViewState(viewState)}
-        controller={true}
-        layers={[scatterplotLayer]} // Using scatterplot as fallback since we don't have icon atlas yet
+    <div className="fixed inset-0 z-0">
+      <Map
+        initialViewState={{
+          longitude: -122.4194,
+          latitude: 37.7749,
+          zoom: 2,
+        }}
+        style={{ width: "100vw", height: "100vh" }}
+        mapStyle="mapbox://styles/mapbox/light-v11"
+        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ""}
       >
-        <Map
-          mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ""}
-          mapStyle="mapbox://styles/mapbox/light-v11"
-          onLoad={() => {
-            // Fit map to show all profiles
-            if (mapProfiles.length > 0) {
-              const viewport = new WebMercatorViewport(viewState);
-              const bounds = mapProfiles.reduce(
-                (acc, profile) => ({
-                  minLng: Math.min(acc.minLng, profile.longitude),
-                  maxLng: Math.max(acc.maxLng, profile.longitude),
-                  minLat: Math.min(acc.minLat, profile.latitude),
-                  maxLat: Math.max(acc.maxLat, profile.latitude),
-                }),
-                {
-                  minLng: mapProfiles[0]!.longitude,
-                  maxLng: mapProfiles[0]!.longitude,
-                  minLat: mapProfiles[0]!.latitude,
-                  maxLat: mapProfiles[0]!.latitude,
-                },
-              );
-
-              const { longitude, latitude, zoom } = viewport.fitBounds(
-                [
-                  [bounds.minLng, bounds.minLat],
-                  [bounds.maxLng, bounds.maxLat],
-                ],
-                { padding: 40 },
-              );
-
-              setViewState((prev) => ({
-                ...prev,
-                longitude,
-                latitude,
-                zoom: Math.min(zoom, 10), // Don't zoom in too much
-              }));
-            }
-          }}
-        />
-      </DeckGL>
+        <DeckGLOverlay layers={layers} />
+      </Map>
 
       {/* Profile Card Sidebar */}
       {selectedProfile && (
-        <div className="absolute right-4 top-4 max-h-[500px] w-80 overflow-y-auto">
-          <div className="rounded-lg border bg-white p-4 shadow-lg">
+        <div className="absolute right-4 top-4 z-50 max-h-[500px] w-80 overflow-y-auto">
+          <div className="rounded-lg border bg-white p-4 shadow-xl backdrop-blur-sm">
             <div className="mb-3 flex items-start justify-between">
               <h3 className="text-lg font-semibold">Profile Details</h3>
               <button
@@ -285,10 +225,10 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
 
       {/* Load More Profiles Button */}
       {!isLastPage && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 transform">
+        <div className="absolute bottom-4 left-1/2 z-40 -translate-x-1/2 transform">
           <button
             onClick={() => showMore()}
-            className="rounded-full bg-blue-600 px-4 py-2 text-white shadow-lg transition-colors hover:bg-blue-700"
+            className="rounded-full bg-blue-600 px-4 py-2 text-white shadow-xl backdrop-blur-sm transition-colors hover:bg-blue-700"
           >
             Load More Profiles ({mapProfiles.length} shown)
           </button>
@@ -296,7 +236,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       )}
 
       {/* Map Stats */}
-      <div className="absolute left-4 top-4 rounded-lg bg-white px-3 py-2 shadow-lg">
+      <div className="absolute left-4 top-4 z-40 rounded-lg bg-white/90 px-3 py-2 shadow-xl backdrop-blur-sm">
         <div className="text-sm text-gray-600">
           Showing {mapProfiles.length} profiles with locations
         </div>

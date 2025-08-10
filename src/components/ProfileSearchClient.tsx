@@ -291,9 +291,9 @@ export default function ProfileSearchClient({
   }, [collectionName]);
 
   return (
-    <div className={`container mx-auto px-4 py-8 ${className}`}>
+    <div className={currentView === "map" ? "relative" : `container mx-auto px-4 py-8 ${className}`}>
       {/* Debug Panel - Remove this after fixing the issue */}
-      <TypesenseDebugger />
+      {currentView !== "map" && <TypesenseDebugger />}
 
       <InstantSearch
         indexName={collectionName}
@@ -312,63 +312,120 @@ export default function ProfileSearchClient({
           enablePersonalization={false}
         />
 
-        {/* Search Header */}
-        <div className="mx-auto mb-8 max-w-2xl">
-          <DebouncedSearchBox placeholder={placeholder} />
-        </div>
+        {currentView === "map" ? (
+          /* Map View - Full screen with floating controls */
+          <>
+            {/* Floating Debug Panel for Map */}
+            <div className="fixed left-4 bottom-4 z-50 max-w-sm">
+              <TypesenseDebugger />
+            </div>
 
-        {/* Controls Bar */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          {/* Left side - Stats and Filter */}
-          <div className="flex items-center gap-4">
-            <Stats
-              classNames={{
-                root: "text-sm text-gray-600",
-              }}
-            />
+            {/* Floating Search Header */}
+            <div className="fixed left-1/2 top-4 z-40 w-96 max-w-[90vw] -translate-x-1/2 transform">
+              <DebouncedSearchBox placeholder={placeholder} />
+            </div>
 
-            {showFilters && (
-              <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-            )}
-          </div>
+            {/* Floating Controls Bar */}
+            <div className="fixed right-4 top-4 z-40 space-y-4">
+              <div className="flex items-center gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
+                <Stats
+                  classNames={{
+                    root: "text-sm text-gray-600",
+                  }}
+                />
+                {showFilters && (
+                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
+                )}
+              </div>
+              
+              <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
+                <ViewSwitcher
+                  currentView={currentView}
+                  onViewChange={setCurrentView}
+                />
+                <SortBy
+                  items={[
+                    { label: "Most Recent", value: collectionName },
+                    {
+                      label: "Most Followers",
+                      value: `${collectionName}/sort/followers_count:desc`,
+                    },
+                    {
+                      label: "Oldest First",
+                      value: `${collectionName}/sort/profile_created_at:asc`,
+                    },
+                  ]}
+                  classNames={{
+                    root: "min-w-[180px]",
+                    select:
+                      "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
+                  }}
+                />
+              </div>
+            </div>
 
-          {/* Right side - View Switcher and Sort Options */}
-          <div className="flex items-center gap-4">
-            <ViewSwitcher
-              currentView={currentView}
-              onViewChange={setCurrentView}
-            />
-            <SortBy
-              items={[
-                { label: "Most Recent", value: collectionName },
-                {
-                  label: "Most Followers",
-                  value: `${collectionName}/sort/followers_count:desc`,
-                },
-                {
-                  label: "Oldest First",
-                  value: `${collectionName}/sort/profile_created_at:asc`,
-                },
-              ]}
-              classNames={{
-                root: "min-w-[180px]",
-                select:
-                  "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Results */}
-        <div className="mb-8">
-          {currentView === "masonry" ? (
-            <InfiniteMasonryHits />
-          ) : currentView === "table" ? (
-            <ProfileDataTable />
-          ) : (
             <ProfileMapView />
-          )}
-        </div>
+          </>
+        ) : (
+          /* Normal View - Container Layout */
+          <>
+            {/* Search Header */}
+            <div className="mx-auto mb-8 max-w-2xl">
+              <DebouncedSearchBox placeholder={placeholder} />
+            </div>
+
+            {/* Controls Bar */}
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+              {/* Left side - Stats and Filter */}
+              <div className="flex items-center gap-4">
+                <Stats
+                  classNames={{
+                    root: "text-sm text-gray-600",
+                  }}
+                />
+
+                {showFilters && (
+                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
+                )}
+              </div>
+
+              {/* Right side - View Switcher and Sort Options */}
+              <div className="flex items-center gap-4">
+                <ViewSwitcher
+                  currentView={currentView}
+                  onViewChange={setCurrentView}
+                />
+                <SortBy
+                  items={[
+                    { label: "Most Recent", value: collectionName },
+                    {
+                      label: "Most Followers",
+                      value: `${collectionName}/sort/followers_count:desc`,
+                    },
+                    {
+                      label: "Oldest First",
+                      value: `${collectionName}/sort/profile_created_at:asc`,
+                    },
+                  ]}
+                  classNames={{
+                    root: "min-w-[180px]",
+                    select:
+                      "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Results */}
+            <div className="mb-8">
+              {currentView === "masonry" ? (
+                <InfiniteMasonryHits />
+              ) : (
+                <ProfileDataTable />
+              )}
+            </div>
+          </>
+        )}
 
         {/* Filter Modal */}
         {showFilters && (
