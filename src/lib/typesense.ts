@@ -77,7 +77,6 @@ console.log("🔧 Typesense Adapter Configuration:", {
     process.env.NEXT_PUBLIC_TYPESENSE_PROTOCOL2
   ),
   adapter: selectedAdapter,
-  searchParameters: selectedAdapter.additionalSearchParameters,
 });
 
 export const searchClient = selectedAdapter.searchClient;
