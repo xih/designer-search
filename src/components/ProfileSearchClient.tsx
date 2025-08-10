@@ -18,6 +18,7 @@ import { FilterModal, FilterButton } from "./FilterModal";
 import { TypesenseDebugger } from "./TypesenseDebugger";
 import { ViewSwitcher, type ViewType } from "./ViewSwitcher";
 import { ProfileDataTable } from "./ProfileDataTable";
+import { ProfileMapView } from "./ProfileMapView";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search } from "lucide-react";
 import { Input } from "~/components/ui/input";
@@ -362,8 +363,10 @@ export default function ProfileSearchClient({
         <div className="mb-8">
           {currentView === "masonry" ? (
             <InfiniteMasonryHits />
-          ) : (
+          ) : currentView === "table" ? (
             <ProfileDataTable />
+          ) : (
+            <ProfileMapView />
           )}
         </div>
 

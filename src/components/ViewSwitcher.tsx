@@ -1,9 +1,9 @@
 "use client";
 
 import { Button } from "~/components/ui/button";
-import { LayoutGrid, Table } from "lucide-react";
+import { LayoutGrid, Table, MapPin } from "lucide-react";
 
-export type ViewType = "masonry" | "table";
+export type ViewType = "masonry" | "table" | "map";
 
 interface ViewSwitcherProps {
   currentView: ViewType;
@@ -38,6 +38,19 @@ export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
       >
         <Table className="h-4 w-4" />
         <span className="ml-1 text-sm">Table</span>
+      </Button>
+      <Button
+        variant={currentView === "map" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => onViewChange("map")}
+        className={`h-8 rounded-full px-3 ${
+          currentView === "map"
+            ? "bg-blue-600 text-white hover:bg-blue-700"
+            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        }`}
+      >
+        <MapPin className="h-4 w-4" />
+        <span className="ml-1 text-sm">Map</span>
       </Button>
     </div>
   );
