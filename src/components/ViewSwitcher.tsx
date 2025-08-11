@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import { LayoutGrid, Table, MapPin } from "lucide-react";
 
@@ -11,6 +12,38 @@ interface ViewSwitcherProps {
 }
 
 export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only trigger if no input element is focused
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement ||
+        (event.target instanceof HTMLElement && event.target.contentEditable === 'true')
+      ) {
+        return;
+      }
+
+      switch (event.key.toLowerCase()) {
+        case 'g':
+          event.preventDefault();
+          onViewChange('masonry');
+          break;
+        case 't':
+          event.preventDefault();
+          onViewChange('table');
+          break;
+        case 'm':
+          event.preventDefault();
+          onViewChange('map');
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onViewChange]);
+
   return (
     <div className="flex rounded-full border-2 border-gray-200 bg-white p-1">
       <Button
@@ -25,6 +58,9 @@ export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
       >
         <LayoutGrid className="h-4 w-4" />
         <span className="ml-1 text-sm">Grid</span>
+        <kbd className="ml-2 rounded border px-1 py-0.5 text-xs font-mono opacity-60">
+          G
+        </kbd>
       </Button>
       <Button
         variant={currentView === "table" ? "default" : "ghost"}
@@ -38,6 +74,9 @@ export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
       >
         <Table className="h-4 w-4" />
         <span className="ml-1 text-sm">Table</span>
+        <kbd className="ml-2 rounded border px-1 py-0.5 text-xs font-mono opacity-60">
+          T
+        </kbd>
       </Button>
       <Button
         variant={currentView === "map" ? "default" : "ghost"}
@@ -51,6 +90,9 @@ export function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
       >
         <MapPin className="h-4 w-4" />
         <span className="ml-1 text-sm">Map</span>
+        <kbd className="ml-2 rounded border px-1 py-0.5 text-xs font-mono opacity-60">
+          M
+        </kbd>
       </Button>
     </div>
   );
