@@ -172,8 +172,8 @@ function InfiniteMasonryHits() {
     [],
   );
 
-  // Handle loading state
-  if (status === "loading" || status === "stalled") {
+  // Handle initial loading state (only when no items exist)
+  if ((status === "loading" || status === "stalled") && masonryItems.length === 0) {
     return (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
@@ -229,6 +229,17 @@ function InfiniteMasonryHits() {
               hit={item.hit}
               index={item.index}
             />
+          ))}
+        </div>
+      )}
+
+      {/* Loading skeleton for new items during pagination */}
+      {isLoadingMore && (
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={`loading-${i}`} className="animate-pulse">
+              <div className="h-80 rounded-xl bg-gray-200"></div>
+            </div>
           ))}
         </div>
       )}

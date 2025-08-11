@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import type { ProfileHitOptional } from "~/types/typesense";
-import Image from "next/image";
 import { Skeleton } from "~/components/ui/skeleton";
+import { ProfileAvatar, AVATAR_ZOOM_PRESETS } from "./ProfileAvatar";
 
 interface ProfileHitMasonryProps {
   hit: ProfileHitOptional;
@@ -11,8 +11,9 @@ interface ProfileHitMasonryProps {
 }
 
 export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
+  // Avatar zoom level - you can adjust this value to control cropping
+  // 1.0 = normal, 1.1 = 110% (crops borders), 1.2 = 120% (more aggressive)
+  const avatarZoom = AVATAR_ZOOM_PRESETS.CROP_BORDERS;
 
   // Handle case where hit is undefined
   if (!hit) {
@@ -34,24 +35,9 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
     window.location.href = `mailto:${email}`;
   };
 
-  const handleImageError = () => {
-    setImageError(true);
-    setImageLoading(false);
-  };
-
-  const handleImageLoad = () => {
-    setImageLoading(false);
-    setImageError(false);
-  };
-
   const isValidUrl = (url?: string): boolean => {
     return !!(url?.trim() && url !== "");
   };
-
-  // Prefer opengraphimageurl, fallback to photourl, then profilePhotoUrl
-  const imageUrl = hit.opengraphimageurl ?? hit.photourl ?? hit.profilePhotoUrl;
-  const showProfileImage = isValidUrl(imageUrl) && !imageError;
-  const showFallback = !isValidUrl(imageUrl) || imageError;
 
   // Determine card height based on content
   const hasExtendedContent =
@@ -65,33 +51,13 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
       className={`rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${hasExtendedContent ? "min-h-[400px]" : "min-h-[300px]"} `}
     >
       {/* Profile Avatar - Centered */}
-      <div className="relative mb-4 flex justify-center">
-        {showProfileImage && (
-          <div className="relative h-20 w-20 overflow-hidden rounded-full bg-white">
-            <Image
-              src={imageUrl!}
-              alt={`${hit.name}'s profile photo`}
-              width={16}
-              height={16}
-              className="scale-200 h-full w-full object-cover"
-              onError={handleImageError}
-              onLoad={handleImageLoad}
-              unoptimized
-            />
-          </div>
-        )}
-
-        {showFallback && (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500">
-            <span className="text-2xl font-bold text-white">
-              {hit.name?.charAt(0)?.toUpperCase() || "?"}
-            </span>
-          </div>
-        )}
-
-        {imageLoading && isValidUrl(imageUrl) && !imageError && (
-          <Skeleton className="h-20 w-20 rounded-full" />
-        )}
+      <div className="mb-4 flex justify-center">
+        <ProfileAvatar
+          profile={hit}
+          size={80}
+          zoom={avatarZoom}
+          className=""
+        />
       </div>
 
       {/* Profile Information - Centered */}

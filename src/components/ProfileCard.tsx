@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
 import type { ProfileHitOptional } from "~/types/typesense";
+import { ProfileAvatar, AVATAR_ZOOM_PRESETS } from "./ProfileAvatar";
 
 interface ProfileCardProps {
   profile: ProfileHitOptional;
@@ -21,29 +21,11 @@ export function ProfileCard({ profile }: ProfileCardProps) {
     <div className="space-y-4">
       {/* Profile Header */}
       <div className="flex items-center space-x-3">
-        {(() => {
-          // Prefer opengraphimageurl, fallback to photourl, then profilePhotoUrl
-          const imageUrl =
-            profile.opengraphimageurl ??
-            profile.photourl ??
-            profile.profilePhotoUrl;
-          return isValidUrl(imageUrl) ? (
-            <Image
-              // src={imageUrl!}
-              src="/Dennis_profile.png"
-              alt={`${profile.name}'s profile photo`}
-              width={16}
-              height={16}
-              className="h-16 w-16 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500">
-              <span className="text-lg font-bold text-white">
-                {profile.name?.charAt(0)?.toUpperCase() || "?"}
-              </span>
-            </div>
-          );
-        })()}
+        <ProfileAvatar
+          profile={profile}
+          size={64}
+          zoom={AVATAR_ZOOM_PRESETS.CROP_BORDERS}
+        />
         <div>
           <h3 className="font-semibold text-gray-900">
             {profile.name ?? "Unknown"}

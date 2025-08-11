@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { Button } from "~/components/ui/button";
-import Image from "next/image";
+import { ProfileAvatar, AVATAR_ZOOM_PRESETS } from "./ProfileAvatar";
 
 export function ProfileDataTable() {
   const {
@@ -168,35 +168,11 @@ export function ProfileDataTable() {
               <TableRow key={profile.id || index}>
                 {/* Profile Photo */}
                 <TableCell>
-                  {(() => {
-                    // Debug logging to verify profile data structure
-                    console.log("Table profile data:", {
-                      id: profile.id,
-                      profilePhotoUrl: profile.profilePhotoUrl,
-                    });
-
-                    // Prefer opengraphimageurl, fallback to photourl, then profilePhotoUrl
-                    const imageUrl =
-                      profile.opengraphimageurl ??
-                      profile.photourl ??
-                      profile.profilePhotoUrl;
-                    return isValidUrl(imageUrl) ? (
-                      <Image
-                        src={imageUrl!}
-                        alt={`${profile.name}'s profile photo`}
-                        width={40}
-                        height={40}
-                        className="h-10 w-10 rounded-full object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500">
-                        <span className="text-sm font-bold text-white">
-                          {profile.name?.charAt(0)?.toUpperCase() || "?"}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                  <ProfileAvatar
+                    profile={profile}
+                    size={40}
+                    zoom={AVATAR_ZOOM_PRESETS.CROP_BORDERS}
+                  />
                 </TableCell>
 
                 {/* Name & Username */}
