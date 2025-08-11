@@ -21,24 +21,33 @@ export function ProfileCard({ profile }: ProfileCardProps) {
     <div className="space-y-4">
       {/* Profile Header */}
       <div className="flex items-center space-x-3">
-        {isValidUrl(profile.profilePhotoUrl) ? (
-          <Image
-            src={profile.profilePhotoUrl!}
-            alt={`${profile.name}'s profile photo`}
-            width={60}
-            height={60}
-            className="h-16 w-16 rounded-full object-cover"
-            unoptimized
-          />
-        ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500">
-            <span className="text-lg font-bold text-white">
-              {profile.name?.charAt(0)?.toUpperCase() || "?"}
-            </span>
-          </div>
-        )}
+        {(() => {
+          // Prefer opengraphimageurl, fallback to photourl, then profilePhotoUrl
+          const imageUrl =
+            profile.opengraphimageurl ??
+            profile.photourl ??
+            profile.profilePhotoUrl;
+          return isValidUrl(imageUrl) ? (
+            <Image
+              // src={imageUrl!}
+              src="/Dennis_profile.png"
+              alt={`${profile.name}'s profile photo`}
+              width={16}
+              height={16}
+              className="h-16 w-16 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500">
+              <span className="text-lg font-bold text-white">
+                {profile.name?.charAt(0)?.toUpperCase() || "?"}
+              </span>
+            </div>
+          );
+        })()}
         <div>
-          <h3 className="font-semibold text-gray-900">{profile.name ?? "Unknown"}</h3>
+          <h3 className="font-semibold text-gray-900">
+            {profile.name ?? "Unknown"}
+          </h3>
           {profile.username && (
             <p className="text-sm text-gray-500">@{profile.username}</p>
           )}
@@ -83,7 +92,7 @@ export function ProfileCard({ profile }: ProfileCardProps) {
       {profile.skills && profile.skills.length > 0 && (
         <div>
           <h4 className="text-sm font-medium text-gray-700">Skills</h4>
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="mt-1 flex flex-wrap gap-1">
             {profile.skills.slice(0, 6).map((skill, idx) => (
               <span
                 key={idx}
@@ -105,7 +114,7 @@ export function ProfileCard({ profile }: ProfileCardProps) {
       {profile.companies && profile.companies.length > 0 && (
         <div>
           <h4 className="text-sm font-medium text-gray-700">Companies</h4>
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="mt-1 flex flex-wrap gap-1">
             {profile.companies.slice(0, 4).map((company, idx) => (
               <span
                 key={idx}
@@ -124,8 +133,8 @@ export function ProfileCard({ profile }: ProfileCardProps) {
       )}
 
       {/* Actions */}
-      <div className="pt-4 border-t">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Actions</h4>
+      <div className="border-t pt-4">
+        <h4 className="mb-2 text-sm font-medium text-gray-700">Actions</h4>
         <div className="flex gap-2">
           {/* Email */}
           {isValidUrl(profile.contact_email) && (
@@ -134,8 +143,18 @@ export function ProfileCard({ profile }: ProfileCardProps) {
               className="inline-flex items-center rounded bg-gray-100 p-2 text-gray-700 transition-colors hover:bg-gray-200"
               title="Send email"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
             </button>
           )}
@@ -173,14 +192,28 @@ export function ProfileCard({ profile }: ProfileCardProps) {
           {/* Website */}
           {isValidUrl(profile.website) && (
             <a
-              href={profile.website!.startsWith("http") ? profile.website! : `https://${profile.website}`}
+              href={
+                profile.website!.startsWith("http")
+                  ? profile.website!
+                  : `https://${profile.website}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center rounded bg-gray-50 p-2 text-gray-700 transition-colors hover:bg-gray-100"
               title="Website"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
               </svg>
             </a>
           )}

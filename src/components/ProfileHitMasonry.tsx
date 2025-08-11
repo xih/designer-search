@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import type { ProfileHitOptional } from "~/types/typesense";
 import Image from "next/image";
+import { Skeleton } from "~/components/ui/skeleton";
 
 interface ProfileHitMasonryProps {
   hit: ProfileHitOptional;
@@ -13,18 +14,17 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
-
   // Handle case where hit is undefined
   if (!hit) {
     return (
-      <div className="rounded-xl border bg-white p-4 shadow-sm min-h-[300px] animate-pulse">
-        <div className="flex justify-center mb-4">
-          <div className="h-20 w-20 rounded-full bg-gray-200"></div>
+      <div className="min-h-[300px] rounded-xl border bg-white p-4 shadow-sm">
+        <div className="mb-4 flex justify-center">
+          <Skeleton className="h-20 w-20 rounded-full" />
         </div>
-        <div className="text-center space-y-2">
-          <div className="h-4 bg-gray-200 rounded mx-4"></div>
-          <div className="h-3 bg-gray-200 rounded mx-8"></div>
-          <div className="h-3 bg-gray-200 rounded mx-6"></div>
+        <div className="space-y-2 text-center">
+          <Skeleton className="mx-4 h-4" />
+          <Skeleton className="mx-8 h-3" />
+          <Skeleton className="mx-6 h-3" />
         </div>
       </div>
     );
@@ -48,67 +48,71 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
     return !!(url?.trim() && url !== "");
   };
 
-  const showProfileImage = isValidUrl(hit.profilePhotoUrl) && !imageError;
-  const showFallback = !isValidUrl(hit.profilePhotoUrl) || imageError;
+  // Prefer opengraphimageurl, fallback to photourl, then profilePhotoUrl
+  const imageUrl = hit.opengraphimageurl ?? hit.photourl ?? hit.profilePhotoUrl;
+  const showProfileImage = isValidUrl(imageUrl) && !imageError;
+  const showFallback = !isValidUrl(imageUrl) || imageError;
 
   // Determine card height based on content
-  const hasExtendedContent = (hit.about && hit.about.length > 100) ?? 
-                           (hit.skills && hit.skills.length > 6) ??
-                           (hit.companies && hit.companies.length > 3) ??
-                           (hit.project_names && hit.project_names.length > 3);
+  const hasExtendedContent =
+    (hit.about && hit.about.length > 100) ??
+    (hit.skills && hit.skills.length > 6) ??
+    (hit.companies && hit.companies.length > 3) ??
+    (hit.project_names && hit.project_names.length > 3);
 
   return (
-    <div 
-      className={`
-        rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:shadow-lg hover:scale-[1.02]
-        ${hasExtendedContent ? 'min-h-[400px]' : 'min-h-[300px]'}
-      `}
+    <div
+      className={`rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${hasExtendedContent ? "min-h-[400px]" : "min-h-[300px]"} `}
     >
       {/* Profile Avatar - Centered */}
       <div className="relative mb-4 flex justify-center">
         {showProfileImage && (
-          <Image
-            src={hit.profilePhotoUrl!}
-            alt={`${hit.name}'s profile photo`}
-            width={80}
-            height={80}
-            className="h-20 w-20 rounded-full object-cover ring-2 ring-gray-100"
-            onError={handleImageError}
-            onLoad={handleImageLoad}
-            unoptimized
-          />
+          <div className="relative h-20 w-20 overflow-hidden rounded-full bg-white">
+            <Image
+              src={imageUrl!}
+              alt={`${hit.name}'s profile photo`}
+              width={16}
+              height={16}
+              className="scale-200 h-full w-full object-cover"
+              onError={handleImageError}
+              onLoad={handleImageLoad}
+              unoptimized
+            />
+          </div>
         )}
 
         {showFallback && (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500 ring-2 ring-gray-100">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500">
             <span className="text-2xl font-bold text-white">
               {hit.name?.charAt(0)?.toUpperCase() || "?"}
             </span>
           </div>
         )}
 
-        {imageLoading && isValidUrl(hit.profilePhotoUrl) && !imageError && (
-          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-100">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
-          </div>
+        {imageLoading && isValidUrl(imageUrl) && !imageError && (
+          <Skeleton className="h-20 w-20 rounded-full" />
         )}
       </div>
 
       {/* Profile Information - Centered */}
       <div className="text-center">
         {/* Name and Username */}
-        <h3 className="text-lg font-bold text-gray-900 leading-tight">{hit.name || "Unknown"}</h3>
+        <h3 className="text-lg font-bold leading-tight text-gray-900">
+          {hit.name || "Unknown"}
+        </h3>
         {hit.username && (
-          <p className="text-sm text-gray-500 mt-1">@{hit.username}</p>
+          <p className="mt-1 text-sm text-gray-500">@{hit.username}</p>
         )}
         {hit.title && (
-          <p className="text-sm font-medium text-gray-700 mt-1 line-clamp-2">{hit.title}</p>
+          <p className="mt-1 line-clamp-2 text-sm font-medium text-gray-700">
+            {hit.title}
+          </p>
         )}
 
         {/* Followers count */}
         {hit.followers_count !== undefined && hit.followers_count > 0 && (
           <div className="mt-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-medium">
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
               {hit.followers_count.toLocaleString()} followers
             </span>
           </div>
@@ -116,7 +120,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
 
         {/* Location */}
         {hit.location && (
-          <p className="text-sm text-gray-600 mt-2 flex items-center justify-center gap-1">
+          <p className="mt-2 flex items-center justify-center gap-1 text-sm text-gray-600">
             <span>📍</span>
             {hit.location}
           </p>
@@ -124,7 +128,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
 
         {/* About section */}
         {hit.about && (
-          <p className="mt-3 text-sm text-gray-700 line-clamp-4 text-left">
+          <p className="mt-3 line-clamp-4 text-left text-sm text-gray-700">
             {hit.about}
           </p>
         )}
@@ -132,11 +136,11 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
         {/* Skills - Show top 4 in compact form */}
         {hit.skills && hit.skills.length > 0 && (
           <div className="mt-3">
-            <div className="flex flex-wrap gap-1 justify-center">
+            <div className="flex flex-wrap justify-center gap-1">
               {hit.skills.slice(0, 4).map((skill, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700 font-medium"
+                  className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
                 >
                   {skill}
                 </span>
@@ -153,11 +157,11 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
         {/* Companies - Show top 2 */}
         {hit.companies && hit.companies.length > 0 && (
           <div className="mt-2">
-            <div className="flex flex-wrap gap-1 justify-center">
+            <div className="flex flex-wrap justify-center gap-1">
               {hit.companies.slice(0, 2).map((company, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-green-50 px-2 py-1 text-xs text-green-700 font-medium"
+                  className="rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
                 >
                   {company}
                 </span>
@@ -180,8 +184,18 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               className="inline-flex items-center rounded-full bg-gray-100 p-2 text-gray-700 transition-colors hover:bg-gray-200"
               title="Send email"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 7.89a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
             </button>
           )}
@@ -219,14 +233,28 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
           {/* Website */}
           {isValidUrl(hit.website) && (
             <a
-              href={hit.website!.startsWith("http") ? hit.website! : `https://${hit.website}`}
+              href={
+                hit.website!.startsWith("http")
+                  ? hit.website!
+                  : `https://${hit.website}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center rounded-full bg-gray-50 p-2 text-gray-700 transition-colors hover:bg-gray-100"
               title="Website"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
               </svg>
             </a>
           )}

@@ -272,7 +272,7 @@ export default function ProfileSearchClient({
     process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME ??
     "profiles";
 
-  // Debug environment variables
+  // Debug environment variables and schema
   useEffect(() => {
     console.log("🔧 Typesense Configuration Debug:", {
       collectionName,
@@ -291,7 +291,13 @@ export default function ProfileSearchClient({
   }, [collectionName]);
 
   return (
-    <div className={currentView === "map" ? "relative" : `container mx-auto px-4 py-8 ${className}`}>
+    <div
+      className={
+        currentView === "map"
+          ? "relative"
+          : `container mx-auto px-4 py-8 ${className}`
+      }
+    >
       {/* Debug Panel - Remove this after fixing the issue */}
       {currentView !== "map" && <TypesenseDebugger />}
 
@@ -303,7 +309,7 @@ export default function ProfileSearchClient({
             query: "",
           },
         }}
-        insights={true}
+        insights={false}
       >
         {/* Configure search parameters */}
         <Configure
@@ -316,7 +322,7 @@ export default function ProfileSearchClient({
           /* Map View - Full screen with floating controls */
           <>
             {/* Floating Debug Panel for Map */}
-            <div className="fixed left-4 bottom-4 z-50 max-w-sm">
+            <div className="fixed bottom-4 left-4 z-50 max-w-sm">
               <TypesenseDebugger />
             </div>
 
@@ -337,7 +343,7 @@ export default function ProfileSearchClient({
                   <FilterButton onClick={() => setIsFilterModalOpen(true)} />
                 )}
               </div>
-              
+
               <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
                 <ViewSwitcher
                   currentView={currentView}

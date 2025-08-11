@@ -11,7 +11,9 @@ export interface ProfileHit {
   about: string;
   location: string;
   website: string;
-  profilePhotoUrl: string; // Profile photo URL (matches your backend)
+  profilePhotoUrl: string; // Legacy profile photo URL field
+  photourl: string; // Profile photo URL (correct field name from backend)
+  opengraphimageurl: string; // OpenGraph image URL from database
   contact_email: string; // Contact email address
   linkedin_url: string; // LinkedIn profile URL
   twitter_url: string; // Twitter/X profile URL
@@ -44,7 +46,9 @@ export interface ProfileHitOptional {
   about?: string;
   location?: string;
   website?: string;
-  profilePhotoUrl?: string; // Profile photo URL (matches your backend)
+  profilePhotoUrl?: string; // Legacy profile photo URL field
+  photourl?: string; // Profile photo URL (correct field name from backend)
+  opengraphimageurl?: string; // OpenGraph image URL from database
   contact_email?: string; // Contact email address
   linkedin_url?: string; // LinkedIn profile URL
   twitter_url?: string; // Twitter/X profile URL
@@ -80,7 +84,9 @@ export const PROFILE_COLLECTION_SCHEMA = {
     { name: "about", type: "string" },
     { name: "location", type: "string" },
     { name: "website", type: "string" },
-    { name: "profilePhotoUrl", type: "string" }, // Profile photo URL
+    { name: "profilePhotoUrl", type: "string" }, // Legacy profile photo URL
+    { name: "photourl", type: "string" }, // Profile photo URL (correct field name)
+    { name: "opengraphimageurl", type: "string" }, // OpenGraph image URL
     { name: "contact_email", type: "string" }, // Contact email
     { name: "linkedin_url", type: "string" }, // LinkedIn URL
     { name: "twitter_url", type: "string" }, // Twitter URL
@@ -99,6 +105,8 @@ export const PROFILE_COLLECTION_SCHEMA = {
     { name: "profile_created_at", type: "int64", sort: true },
     { name: "followers_count", type: "int32", sort: true },
     { name: "indexed_at", type: "int64", sort: true },
+    { name: "opengraphimageurl", type: "string" }, // photo url
+    { name: "photourl", type: "string" },
   ],
   default_sorting_field: "indexed_at",
 } as const;

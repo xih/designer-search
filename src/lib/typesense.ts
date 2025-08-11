@@ -24,6 +24,8 @@ const typesenseInstantSearchAdapter = new TypesenseInstantSearchAdapter({
     max_hits: 10000,
     limit_hits: 10000,
     exhaustive_search: true,
+    // Explicitly include all fields including image fields
+    include_fields: "id,name,username,title,about,location,website,profilePhotoUrl,photourl,opengraphimageurl,contact_email,linkedin_url,twitter_url,github_url,skills,job_titles,companies,schools,project_names,projects_text,experience_text,education_text,fulltext,searchable_text,embedding,profile_created_at,followers_count,indexed_at",
   },
 });
 
@@ -57,6 +59,8 @@ const getTypesenseAdapter = () => {
         max_hits: 10000,
         limit_hits: 10000,
         exhaustive_search: true,
+        // Explicitly include all fields including image fields
+        include_fields: "id,name,username,title,about,location,website,profilePhotoUrl,photourl,opengraphimageurl,contact_email,linkedin_url,twitter_url,github_url,skills,job_titles,companies,schools,project_names,projects_text,experience_text,education_text,fulltext,searchable_text,embedding,profile_created_at,followers_count,indexed_at",
       },
     });
     return adapter2;
