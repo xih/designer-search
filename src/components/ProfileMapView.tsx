@@ -2,12 +2,10 @@
 
 import React, { useState, useMemo, useCallback } from "react";
 import { useInfiniteHits, useInstantSearch } from "react-instantsearch";
-import { Map, useControl } from "react-map-gl/mapbox";
-import { MapboxOverlay } from "@deck.gl/mapbox";
-import { ScatterplotLayer, IconLayer } from "@deck.gl/layers";
-import { DeckProps } from "@deck.gl/core";
+import { Map, Marker } from "react-map-gl/mapbox";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { ProfileCard } from "./ProfileCard";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 interface ProfileMapViewProps {
   onProfileSelect?: (profile: ProfileHitOptional) => void;
@@ -18,10 +16,38 @@ interface MapProfile extends ProfileHitOptional {
   latitude: number;
 }
 
-function DeckGLOverlay(props: DeckProps) {
-  const overlay = useControl<MapboxOverlay>(() => new MapboxOverlay(props));
-  overlay.setProps(props);
-  return null;
+
+// Custom component to render ProfileAvatars using Marker for proper globe projection
+function ProfileAvatarOverlay({
+  profiles,
+  onProfileClick,
+}: {
+  profiles: MapProfile[];
+  onProfileClick: (profile: ProfileHitOptional) => void;
+}) {
+  return (
+    <>
+      {profiles.map((profile) => (
+        <Marker
+          key={profile.id}
+          longitude={profile.longitude}
+          latitude={profile.latitude}
+          anchor="center"
+        >
+          <div
+            className="cursor-pointer transition-transform hover:scale-110"
+            onClick={() => onProfileClick(profile)}
+          >
+            <ProfileAvatar
+              profile={profile}
+              size={50}
+              className="shadow-lg ring-2 ring-white hover:ring-blue-500"
+            />
+          </div>
+        </Marker>
+      ))}
+    </>
+  );
 }
 
 // Simple geocoding mock - in real app, you'd use a proper geocoding service
@@ -112,32 +138,6 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     [onProfileSelect],
   );
 
-  const layers = useMemo(
-    () => [
-      new ScatterplotLayer({
-        id: "profile-scatter",
-        data: mapProfiles,
-        pickable: true,
-        opacity: 0.8,
-        stroked: true,
-        filled: true,
-        radiusScale: 1,
-        radiusMinPixels: 12,
-        radiusMaxPixels: 40,
-        lineWidthMinPixels: 2,
-        getPosition: (d: MapProfile) => [d.longitude, d.latitude],
-        getRadius: 20,
-        getFillColor: [29, 78, 216, 200],
-        getLineColor: [255, 255, 255, 255],
-        onClick: ({ object }) => {
-          if (object) {
-            handleProfileClick(object as ProfileHitOptional);
-          }
-        },
-      }),
-    ],
-    [mapProfiles, handleProfileClick],
-  );
 
   if (status === "loading" && mapProfiles.length === 0) {
     return (
@@ -190,7 +190,11 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         mapStyle="mapbox://styles/mapbox/light-v11"
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ""}
       >
-        <DeckGLOverlay layers={layers} />
+        {/* ProfileAvatar Markers */}
+        <ProfileAvatarOverlay
+          profiles={mapProfiles}
+          onProfileClick={handleProfileClick}
+        />
       </Map>
 
       {/* Profile Card Sidebar */}
