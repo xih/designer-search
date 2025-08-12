@@ -1,11 +1,21 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useInfiniteHits, useInstantSearch } from "react-instantsearch";
 import { Map, Marker } from "react-map-gl/mapbox";
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import type { ProfileHitOptional } from "~/types/typesense";
 import { ProfileCard } from "./ProfileCard";
 import { ProfileAvatar } from "./ProfileAvatar";
+import { 
+  profileDataAtom, 
+  profilesCompleteAtom, 
+  profilesLoadingAtom,
+  initialLoadCompletedAtom,
+  dynamicPageSizeAtom,
+  storageStatsAtom,
+  clearProfileCacheAtom
+} from "~/lib/store";
 
 interface ProfileMapViewProps {
   onProfileSelect?: (profile: ProfileHitOptional) => void;
@@ -50,43 +60,6 @@ function ProfileAvatarOverlay({
   );
 }
 
-// Simple geocoding mock - in real app, you'd use a proper geocoding service
-const geocodeLocation = (
-  location: string,
-): { lng: number; lat: number } | null => {
-  const coordinates: Record<string, { lng: number; lat: number }> = {
-    "san francisco": { lng: -122.4194, lat: 37.7749 },
-    "new york": { lng: -74.006, lat: 40.7128 },
-    london: { lng: -0.1276, lat: 51.5074 },
-    paris: { lng: 2.3522, lat: 48.8566 },
-    tokyo: { lng: 139.6917, lat: 35.6895 },
-    berlin: { lng: 13.405, lat: 52.52 },
-    amsterdam: { lng: 4.9041, lat: 52.3676 },
-    toronto: { lng: -79.3832, lat: 43.6532 },
-    sydney: { lng: 151.2093, lat: -33.8688 },
-    singapore: { lng: 103.8198, lat: 1.3521 },
-    "los angeles": { lng: -118.2437, lat: 34.0522 },
-    chicago: { lng: -87.6298, lat: 41.8781 },
-    seattle: { lng: -122.3321, lat: 47.6062 },
-    boston: { lng: -71.0589, lat: 42.3601 },
-    austin: { lng: -97.7431, lat: 30.2672 },
-  };
-
-  const normalized = location?.toLowerCase().trim();
-  if (!normalized) return null;
-
-  // Try exact match first
-  if (coordinates[normalized]) return coordinates[normalized];
-
-  // Try partial matches
-  for (const [city, coords] of Object.entries(coordinates)) {
-    if (normalized.includes(city) || city.includes(normalized)) {
-      return coords;
-    }
-  }
-
-  return null;
-};
 
 export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const {
@@ -98,37 +71,52 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const [selectedProfile, setSelectedProfile] =
     useState<ProfileHitOptional | null>(null);
 
-  // Process profiles and add coordinates
+  // Global state management with Jotai
+  const [profileData, setProfileData] = useAtom(profileDataAtom);
+  const [isProfilesComplete, setIsProfilesComplete] = useAtom(profilesCompleteAtom);
+  const [isLoading, setIsLoading] = useAtom(profilesLoadingAtom);
+  const [initialLoadCompleted, setInitialLoadCompleted] = useAtom(initialLoadCompletedAtom);
+  const [dynamicPageSize, setDynamicPageSize] = useAtom(dynamicPageSizeAtom);
+  const storageStats = useAtomValue(storageStatsAtom);
+  const clearCache = useSetAtom(clearProfileCacheAtom);
+  const [previousLength, setPreviousLength] = useState(0);
+
+  // Process profiles with lat_lng_field coordinates
   const mapProfiles = useMemo(() => {
-    if (!hitsItems || !Array.isArray(hitsItems)) return [];
+    // Use live search data if available, otherwise use global state
+    const profilesToProcess = (hitsItems.length > 0) ? hitsItems : profileData;
+    
+    if (!profilesToProcess || !Array.isArray(profilesToProcess)) return [];
 
     const profilesWithCoords: MapProfile[] = [];
     const locationCounts: Record<string, number> = {};
 
-    hitsItems.forEach((profile) => {
-      if (!profile?.location) return;
-
-      const coords = geocodeLocation(profile.location);
-      if (coords) {
-        // Track how many profiles are in each location for clustering
-        const locationKey = `${coords.lat},${coords.lng}`;
-        locationCounts[locationKey] = (locationCounts[locationKey] ?? 0) + 1;
-
-        // Add small offset for profiles in the same city to prevent overlap
-        const offset = (locationCounts[locationKey] - 1) * 0.005; // Smaller offset
-        const angle =
-          (locationCounts[locationKey] - 1) * 137.5 * (Math.PI / 180); // Golden angle
-
-        profilesWithCoords.push({
-          ...profile,
-          longitude: coords.lng + Math.cos(angle) * offset,
-          latitude: coords.lat + Math.sin(angle) * offset,
-        });
+    profilesToProcess.forEach((profile) => {
+      // Use lat_lng_field from Typesense geopoint field
+      if (!profile?.lat_lng_field || !Array.isArray(profile.lat_lng_field) || profile.lat_lng_field.length !== 2) {
+        return;
       }
+
+      const [latitude, longitude] = profile.lat_lng_field;
+
+      // Track how many profiles are in each location for clustering
+      const locationKey = `${latitude},${longitude}`;
+      locationCounts[locationKey] = (locationCounts[locationKey] ?? 0) + 1;
+
+      // Add small offset for profiles in the same city to prevent overlap
+      const offset = (locationCounts[locationKey] - 1) * 0.005; // Smaller offset
+      const angle =
+        (locationCounts[locationKey] - 1) * 137.5 * (Math.PI / 180); // Golden angle
+
+      profilesWithCoords.push({
+        ...profile,
+        longitude: longitude + Math.cos(angle) * offset,
+        latitude: latitude + Math.sin(angle) * offset,
+      });
     });
 
     return profilesWithCoords;
-  }, [hitsItems]);
+  }, [hitsItems, profileData]);
 
   const handleProfileClick = useCallback(
     (profile: ProfileHitOptional) => {
@@ -138,19 +126,99 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     [onProfileSelect],
   );
 
+  // Sync live search data to global state with storage monitoring
+  useEffect(() => {
+    if (hitsItems.length > 0) {
+      // Check if we're approaching storage limits before saving
+      if (storageStats.isNearLimit) {
+        console.warn('⚠️ Approaching storage limit, clearing cache before saving new data');
+        clearCache();
+      }
+      
+      setProfileData(hitsItems);
+      console.log('🔄 Updated global state with:', hitsItems.length, 'profiles');
+      console.log('📊 Storage stats:', {
+        size: `${(storageStats.currentSize / 1024).toFixed(1)}KB`,
+        profiles: storageStats.profileCount,
+        nearLimit: storageStats.isNearLimit
+      });
+    }
+  }, [hitsItems, setProfileData, storageStats.isNearLimit, clearCache, storageStats.currentSize, storageStats.profileCount]);
+
+  // Debug logging for batch sizes
+  useEffect(() => {
+    if (hitsItems.length !== previousLength) {
+      const batchSize = hitsItems.length - previousLength;
+      console.log('📊 Batch loaded:', batchSize, 'Total:', hitsItems.length);
+      setPreviousLength(hitsItems.length);
+    }
+  }, [hitsItems.length, previousLength]);
+
+  // Progressive auto-loading: Load initial 50, then continue with larger batches
+  useEffect(() => {
+    if (status === "loading" || isLastPage || isLoading) return;
+    // Skip auto-loading if we already have complete data in global state
+    if (isProfilesComplete && profileData.length > 0) return;
+
+    const autoLoadMore = () => {
+      setIsLoading(true);
+      
+      // Switch to larger page size after first 50 profiles
+      if (!initialLoadCompleted && hitsItems.length >= 50) {
+        console.log('✅ Initial 50 profiles loaded, switching to larger page size (500)');
+        setDynamicPageSize(500);
+        setInitialLoadCompleted(true);
+        setIsLoading(false);
+        // Continue loading with larger batches after a short delay
+        setTimeout(() => {
+          if (!isLastPage) {
+            console.log('🔄 Continuing with larger batches...');
+            showMore();
+          }
+        }, 200);
+        return;
+      }
+      
+      console.log('🔄 Calling showMore(), current items:', hitsItems.length, 'page size:', dynamicPageSize);
+      showMore();
+      
+      // Reset after a delay
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 500);
+    };
+
+    // For initial load, be more responsive (shorter delay)
+    const delay = !initialLoadCompleted && hitsItems.length < 50 ? 100 : 300;
+    const timer = setTimeout(autoLoadMore, delay);
+    return () => clearTimeout(timer);
+  }, [status, isLastPage, isLoading, showMore, hitsItems.length, isProfilesComplete, profileData.length, initialLoadCompleted, setInitialLoadCompleted, dynamicPageSize, setDynamicPageSize, setIsLoading]);
+
+  // Mark profiles as complete when loading is done
+  useEffect(() => {
+    if (isLastPage && hitsItems.length > 0 && !isProfilesComplete) {
+      setIsProfilesComplete(true);
+      setIsLoading(false);
+      console.log('✅ All profiles loaded and cached globally:', hitsItems.length);
+    }
+  }, [isLastPage, hitsItems.length, isProfilesComplete, setIsProfilesComplete, setIsLoading]);
+
 
   if (status === "loading" && mapProfiles.length === 0) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
-        <div className="flex items-center gap-3 text-blue-600">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-          <span className="text-sm font-medium">Loading map...</span>
+        <div className="flex flex-col items-center gap-4 text-blue-600">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <div className="text-center">
+            <div className="text-lg font-medium">Loading Globe View</div>
+            <div className="text-sm text-gray-500">Auto-loading all profiles...</div>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (status === "error") {
+  if (status === "error" && mapProfiles.length === 0) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -163,12 +231,12 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     );
   }
 
-  if (mapProfiles.length === 0) {
+  if (mapProfiles.length === 0 && status !== "loading") {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="text-lg text-gray-500">
-            No profiles with locations found
+            No profiles with coordinates found
           </div>
           <div className="mt-2 text-sm text-gray-400">
             Try adjusting your search or filters
@@ -227,22 +295,49 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         </div>
       )}
 
-      {/* Load More Profiles Button */}
-      {!isLastPage && (
+      {/* Auto-loading Status */}
+      {(isLoading || !isLastPage) && mapProfiles.length > 0 && (
         <div className="absolute bottom-4 left-1/2 z-40 -translate-x-1/2 transform">
-          <button
-            onClick={() => showMore()}
-            className="rounded-full bg-blue-600 px-4 py-2 text-white shadow-xl backdrop-blur-sm transition-colors hover:bg-blue-700"
-          >
-            Load More Profiles ({mapProfiles.length} shown)
-          </button>
+          <div className="flex items-center gap-3 rounded-full bg-blue-600 px-4 py-2 text-white shadow-xl backdrop-blur-sm">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            <span className="text-sm">
+              Auto-loading profiles... ({hitsItems.length.toLocaleString()})
+            </span>
+          </div>
         </div>
       )}
 
       {/* Map Stats */}
       <div className="absolute left-4 top-4 z-40 rounded-lg bg-white/90 px-3 py-2 shadow-xl backdrop-blur-sm">
         <div className="text-sm text-gray-600">
-          Showing {mapProfiles.length} profiles with locations
+          <div>
+            {hitsItems.length > 0 ? 'Live' : 'Cached'}: {hitsItems.length > 0 ? hitsItems.length.toLocaleString() : profileData.length.toLocaleString()} profiles
+          </div>
+          <div>With coordinates: {mapProfiles.length.toLocaleString()}</div>
+          
+          {/* Storage Stats */}
+          <div className="text-xs text-gray-500 mt-1">
+            Storage: {(storageStats.currentSize / 1024).toFixed(1)}KB
+            {storageStats.isNearLimit && (
+              <span className="text-orange-600 font-medium"> ⚠️ Near limit</span>
+            )}
+          </div>
+          
+          {profileData.length > 0 && hitsItems.length === 0 && (
+            <div className="mt-1 text-xs text-purple-600 font-medium">
+              💾 Using cached data
+            </div>
+          )}
+          {!isLastPage && hitsItems.length > 0 && (
+            <div className="mt-1 text-xs text-blue-600 font-medium">
+              Auto-loading... (Page size: {dynamicPageSize})
+            </div>
+          )}
+          {(isLastPage || isProfilesComplete) && (
+            <div className="mt-1 text-xs text-green-600 font-medium">
+              ✓ All profiles loaded
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@ import {
 } from "react-instantsearch";
 import { Masonry } from "masonic";
 import useMeasure from "react-use-measure";
+import { useAtom } from 'jotai';
 import { searchClient } from "~/lib/typesense";
 import { ProfileHitMasonry } from "./ProfileHitMasonry";
 import { FilterModal, FilterButton } from "./FilterModal";
@@ -22,6 +23,13 @@ import { ProfileMapView } from "./ProfileMapView";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search } from "lucide-react";
 import { Input } from "~/components/ui/input";
+import { 
+  profileDataAtom, 
+  profilesCompleteAtom, 
+  profilesLoadingAtom,
+  dynamicPageSizeAtom,
+  initialLoadCompletedAtom
+} from "~/lib/store";
 
 interface ProfileSearchProps {
   indexName?: string;
@@ -118,15 +126,41 @@ function InfiniteMasonryHits() {
   const [ref, { width }] = useMeasure();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+  // Global state management with Jotai
+  const [profileData, setProfileData] = useAtom(profileDataAtom);
+  const [isProfilesComplete, setIsProfilesComplete] = useAtom(profilesCompleteAtom);
+  const [globalLoading, setGlobalLoading] = useAtom(profilesLoadingAtom);
+
+  // Sync live search data to global state
+  useEffect(() => {
+    if (hitsItems.length > 0) {
+      setProfileData(hitsItems);
+      console.log('🔄 [Masonry] Updated global state with:', hitsItems.length, 'profiles');
+    }
+  }, [hitsItems, setProfileData]);
+
+  // Mark profiles as complete when loading is done
+  useEffect(() => {
+    if (isLastPage && hitsItems.length > 0 && !isProfilesComplete) {
+      setIsProfilesComplete(true);
+      setGlobalLoading(false);
+      console.log('✅ [Masonry] All profiles loaded and cached globally:', hitsItems.length);
+    }
+  }, [isLastPage, hitsItems.length, isProfilesComplete, setIsProfilesComplete, setGlobalLoading]);
+
   // Handle infinite scroll loading
   const handleShowMore = useCallback(() => {
-    if (isLoadingMore || isLastPage) return;
+    if (isLoadingMore || isLastPage || globalLoading) return;
 
     setIsLoadingMore(true);
+    setGlobalLoading(true);
     showMore();
     // Reset loading state after a longer delay to allow results to load
-    setTimeout(() => setIsLoadingMore(false), 800);
-  }, [showMore, isLastPage, isLoadingMore]);
+    setTimeout(() => {
+      setIsLoadingMore(false);
+      setGlobalLoading(false);
+    }, 800);
+  }, [showMore, isLastPage, isLoadingMore, globalLoading, setGlobalLoading]);
 
   // Intersection observer for infinite scroll
   const [loadMoreRef, setLoadMoreRef] = useState<HTMLDivElement | null>(null);
@@ -149,16 +183,19 @@ function InfiniteMasonryHits() {
   }, [loadMoreRef, isLastPage, isLoadingMore, handleShowMore]);
 
   const masonryItems = useMemo(() => {
-    if (!hitsItems || !Array.isArray(hitsItems)) {
+    // Use live search data if available, otherwise use global state
+    const profilesToProcess = (hitsItems.length > 0) ? hitsItems : profileData;
+    
+    if (!profilesToProcess || !Array.isArray(profilesToProcess)) {
       return [];
     }
 
-    return hitsItems.map((hit, index) => ({
+    return profilesToProcess.map((hit, index) => ({
       id: hit?.id ?? index.toString(),
       hit: hit,
       index,
     }));
-  }, [hitsItems]);
+  }, [hitsItems, profileData]);
 
   const renderMasonryItem = useCallback(
     ({
@@ -245,14 +282,14 @@ function InfiniteMasonryHits() {
       )}
 
       {/* Infinite scroll trigger and loading indicator */}
-      {!isLastPage && (
+      {(!isLastPage || !isProfilesComplete) && (
         <div className="mt-8 flex flex-col items-center gap-4">
           <div ref={setLoadMoreRef} className="h-4 w-full" />
-          {isLoadingMore ? (
+          {isLoadingMore || globalLoading ? (
             <div className="flex items-center gap-3 text-blue-600">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
               <span className="text-sm font-medium">
-                Loading more profiles...
+                Loading more profiles... ({masonryItems.length.toLocaleString()})
               </span>
             </div>
           ) : (
@@ -265,7 +302,48 @@ function InfiniteMasonryHits() {
           )}
         </div>
       )}
+
+      {/* Cache Status Indicator */}
+      {profileData.length > 0 && hitsItems.length === 0 && (
+        <div className="mt-4 flex justify-center">
+          <div className="rounded-full bg-purple-50 px-3 py-1 text-xs text-purple-600 font-medium">
+            💾 Using cached data ({masonryItems.length.toLocaleString()} profiles)
+          </div>
+        </div>
+      )}
+
+      {(isLastPage || isProfilesComplete) && masonryItems.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          <div className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-600 font-medium">
+            ✓ All {masonryItems.length.toLocaleString()} profiles loaded
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Component to handle dynamic page size configuration
+function DynamicConfigure() {
+  const [dynamicPageSize, setDynamicPageSize] = useAtom(dynamicPageSizeAtom);
+  const [initialLoadCompleted, setInitialLoadCompleted] = useAtom(initialLoadCompletedAtom);
+  const { items } = useInfiniteHits<ProfileHitOptional>();
+
+  // Switch to larger page size after initial 50 profiles loaded
+  useEffect(() => {
+    if (!initialLoadCompleted && items.length >= 50) {
+      setDynamicPageSize(500);
+      setInitialLoadCompleted(true);
+      console.log('🔄 Switched to larger page size (500) after loading initial 50 profiles');
+    }
+  }, [items.length, initialLoadCompleted, setDynamicPageSize, setInitialLoadCompleted]);
+
+  return (
+    <Configure
+      hitsPerPage={dynamicPageSize}
+      maxValuesPerFacet={1000}
+      enablePersonalization={false}
+    />
   );
 }
 
@@ -322,12 +400,8 @@ export default function ProfileSearchClient({
         }}
         insights={false}
       >
-        {/* Configure search parameters */}
-        <Configure
-          hitsPerPage={50}
-          maxValuesPerFacet={1000}
-          enablePersonalization={false}
-        />
+        {/* Configure search parameters with dynamic page sizing */}
+        <DynamicConfigure />
 
         {currentView === "map" ? (
           /* Map View - Full screen with floating controls */

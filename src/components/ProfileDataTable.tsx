@@ -8,6 +8,7 @@ import React, {
   useEffect,
 } from "react";
 import { useInfiniteHits, useInstantSearch } from "react-instantsearch";
+import { useAtom } from 'jotai';
 import type { ProfileHitOptional } from "~/types/typesense";
 import {
   Table,
@@ -19,6 +20,11 @@ import {
 } from "~/components/ui/table";
 import { Button } from "~/components/ui/button";
 import { ProfileAvatar, AVATAR_ZOOM_PRESETS } from "./ProfileAvatar";
+import { 
+  profileDataAtom, 
+  profilesCompleteAtom, 
+  profilesLoadingAtom 
+} from "~/lib/store";
 
 export function ProfileDataTable() {
   const {
@@ -31,9 +37,16 @@ export function ProfileDataTable() {
   const scrollPositionRef = useRef<number>(0);
   const previousItemsLengthRef = useRef<number>(0);
 
+  // Global state management with Jotai
+  const [profileData, setProfileData] = useAtom(profileDataAtom);
+  const [isProfilesComplete, setIsProfilesComplete] = useAtom(profilesCompleteAtom);
+  const [globalLoading, setGlobalLoading] = useAtom(profilesLoadingAtom);
+
   const profiles = useMemo(() => {
-    return hitsItems?.filter(Boolean) || [];
-  }, [hitsItems]);
+    // Use live search data if available, otherwise use global state
+    const profilesToProcess = (hitsItems.length > 0) ? hitsItems : profileData;
+    return profilesToProcess?.filter(Boolean) || [];
+  }, [hitsItems, profileData]);
 
   const isValidUrl = (url?: string): boolean => {
     return !!(url?.trim() && url !== "");
@@ -43,18 +56,39 @@ export function ProfileDataTable() {
     window.location.href = `mailto:${email}`;
   };
 
+  // Sync live search data to global state
+  useEffect(() => {
+    if (hitsItems.length > 0) {
+      setProfileData(hitsItems);
+      console.log('🔄 [Table] Updated global state with:', hitsItems.length, 'profiles');
+    }
+  }, [hitsItems, setProfileData]);
+
+  // Mark profiles as complete when loading is done
+  useEffect(() => {
+    if (isLastPage && hitsItems.length > 0 && !isProfilesComplete) {
+      setIsProfilesComplete(true);
+      setGlobalLoading(false);
+      console.log('✅ [Table] All profiles loaded and cached globally:', hitsItems.length);
+    }
+  }, [isLastPage, hitsItems.length, isProfilesComplete, setIsProfilesComplete, setGlobalLoading]);
+
   const handleShowMore = useCallback(() => {
-    if (isLoadingMore || isLastPage) return;
+    if (isLoadingMore || isLastPage || globalLoading) return;
 
     // Store current scroll position
     scrollPositionRef.current = window.scrollY;
     previousItemsLengthRef.current = profiles.length;
 
     setIsLoadingMore(true);
+    setGlobalLoading(true);
     showMore();
     // Reset loading state after a delay to allow results to load
-    setTimeout(() => setIsLoadingMore(false), 800);
-  }, [showMore, isLastPage, isLoadingMore, profiles.length]);
+    setTimeout(() => {
+      setIsLoadingMore(false);
+      setGlobalLoading(false);
+    }, 800);
+  }, [showMore, isLastPage, isLoadingMore, globalLoading, profiles.length, setGlobalLoading]);
 
   // Restore scroll position after new items are loaded
   useEffect(() => {
@@ -362,13 +396,13 @@ export function ProfileDataTable() {
       </div>
 
       {/* Load More Button */}
-      {!isLastPage && (
+      {(!isLastPage || !isProfilesComplete) && (
         <div className="mt-6 flex justify-center">
-          {isLoadingMore ? (
+          {isLoadingMore || globalLoading ? (
             <div className="flex items-center gap-3 text-blue-600">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
               <span className="text-sm font-medium">
-                Loading more profiles...
+                Loading more profiles... ({profiles.length.toLocaleString()})
               </span>
             </div>
           ) : (
@@ -380,6 +414,23 @@ export function ProfileDataTable() {
               Load More
             </Button>
           )}
+        </div>
+      )}
+
+      {/* Cache Status Indicator */}
+      {profileData.length > 0 && hitsItems.length === 0 && (
+        <div className="mt-4 flex justify-center">
+          <div className="rounded-full bg-purple-50 px-3 py-1 text-xs text-purple-600 font-medium">
+            💾 Using cached data ({profiles.length.toLocaleString()} profiles)
+          </div>
+        </div>
+      )}
+
+      {(isLastPage || isProfilesComplete) && profiles.length > 0 && (
+        <div className="mt-4 flex justify-center">
+          <div className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-600 font-medium">
+            ✓ All {profiles.length.toLocaleString()} profiles loaded
+          </div>
         </div>
       )}
     </div>

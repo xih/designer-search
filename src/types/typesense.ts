@@ -29,6 +29,7 @@ export interface ProfileHit {
   fulltext: string;
   searchable_text: string;
   embedding: number[]; // float[], 768 dimensions
+  lat_lng_field: [number, number]; // geopoint [lat, lng]
   profile_created_at: number; // int64, sort: true
   followers_count: number; // int32, sort: true
   indexed_at: number; // int64, sort: true
@@ -64,6 +65,7 @@ export interface ProfileHitOptional {
   fulltext?: string;
   searchable_text?: string;
   embedding?: number[];
+  lat_lng_field?: [number, number]; // geopoint [lat, lng]
   profile_created_at?: number;
   followers_count?: number;
   indexed_at?: number;
@@ -102,6 +104,7 @@ export const PROFILE_COLLECTION_SCHEMA = {
     { name: "fulltext", type: "string" },
     { name: "searchable_text", type: "string" },
     { name: "embedding", type: "float[]", num_dim: 768 },
+    { name: "lat_lng_field", type: "geopoint" },
     { name: "profile_created_at", type: "int64", sort: true },
     { name: "followers_count", type: "int32", sort: true },
     { name: "indexed_at", type: "int64", sort: true },
