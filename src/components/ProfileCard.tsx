@@ -75,7 +75,7 @@ export function ProfileCard({ profile }: ProfileCardProps) {
         <div>
           <h4 className="text-sm font-medium text-gray-700">Skills</h4>
           <div className="mt-1 flex flex-wrap gap-1">
-            {profile.skills.slice(0, 6).map((skill, idx) => (
+            {profile.skills.map((skill, idx) => (
               <span
                 key={idx}
                 className="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
@@ -83,11 +83,6 @@ export function ProfileCard({ profile }: ProfileCardProps) {
                 {skill}
               </span>
             ))}
-            {profile.skills.length > 6 && (
-              <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                +{profile.skills.length - 6}
-              </span>
-            )}
           </div>
         </div>
       )}
@@ -97,7 +92,7 @@ export function ProfileCard({ profile }: ProfileCardProps) {
         <div>
           <h4 className="text-sm font-medium text-gray-700">Companies</h4>
           <div className="mt-1 flex flex-wrap gap-1">
-            {profile.companies.slice(0, 4).map((company, idx) => (
+            {profile.companies.map((company, idx) => (
               <span
                 key={idx}
                 className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
@@ -105,11 +100,6 @@ export function ProfileCard({ profile }: ProfileCardProps) {
                 {company}
               </span>
             ))}
-            {profile.companies.length > 4 && (
-              <span className="inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                +{profile.companies.length - 4}
-              </span>
-            )}
           </div>
         </div>
       )}
@@ -197,6 +187,22 @@ export function ProfileCard({ profile }: ProfileCardProps) {
                   d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                 />
               </svg>
+            </a>
+          )}
+
+          {/* Portfolio Site */}
+          {isValidUrl(profile.website) && (
+            <a
+              href={
+                profile.website!.startsWith("http")
+                  ? profile.website!
+                  : `https://${profile.website}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+            >
+              Portfolio site
             </a>
           )}
         </div>

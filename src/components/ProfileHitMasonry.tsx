@@ -39,38 +39,34 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
     return !!(url?.trim() && url !== "");
   };
 
-  // Determine card height based on content
-  const hasExtendedContent =
-    (hit.about && hit.about.length > 100) ??
-    (hit.skills && hit.skills.length > 6) ??
-    (hit.companies && hit.companies.length > 3) ??
-    (hit.project_names && hit.project_names.length > 3);
-
   return (
-    <div
-      className={`rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg ${hasExtendedContent ? "min-h-[400px]" : "min-h-[300px]"} `}
-    >
-      {/* Profile Avatar - Centered */}
-      <div className="mb-4 flex justify-center">
-        <ProfileAvatar
-          profile={hit}
-          size={80}
-          zoom={avatarZoom}
-          className=""
-        />
+    <div className="rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg">
+      {/* Profile Avatar - Left Aligned */}
+      <div className="mb-3 flex items-start space-x-3">
+        <ProfileAvatar profile={hit} size={64} zoom={avatarZoom} className="" />
+        <div className="flex-1">
+          {/* Name and Username */}
+          <h3 className="text-lg font-semibold leading-tight text-gray-900">
+            {hit.name || "Unknown"}
+          </h3>
+          {hit.username && (
+            <p className="text-sm text-gray-500">@{hit.username}</p>
+          )}
+          {/* Location */}
+          {hit.location && (
+            <p className="flex items-center gap-1 text-sm text-gray-600">
+              <span>📍</span>
+              {hit.location}
+            </p>
+          )}
+        </div>
       </div>
 
-      {/* Profile Information - Centered */}
-      <div className="text-center">
-        {/* Name and Username */}
-        <h3 className="text-lg font-bold leading-tight text-gray-900">
-          {hit.name || "Unknown"}
-        </h3>
-        {hit.username && (
-          <p className="mt-1 text-sm text-gray-500">@{hit.username}</p>
-        )}
+      {/* Profile Information - Left Aligned */}
+      <div className="space-y-3">
+        {/* Title */}
         {hit.title && (
-          <p className="mt-1 line-clamp-2 text-sm font-medium text-gray-700">
+          <p className="line-clamp-2 text-sm font-medium text-gray-700">
             {hit.title}
           </p>
         )}
@@ -78,71 +74,52 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
         {/* Followers count */}
         {hit.followers_count !== undefined && hit.followers_count > 0 && (
           <div className="mt-2">
-            <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+            <span className="inline-flex items-center rounded-full bg-gray-50 px-3 py-1 text-sm font-medium text-blue-700">
               {hit.followers_count.toLocaleString()} followers
             </span>
           </div>
         )}
 
-        {/* Location */}
-        {hit.location && (
-          <p className="mt-2 flex items-center justify-center gap-1 text-sm text-gray-600">
-            <span>📍</span>
-            {hit.location}
-          </p>
-        )}
 
         {/* About section */}
-        {hit.about && (
-          <p className="mt-3 line-clamp-4 text-left text-sm text-gray-700">
-            {hit.about}
-          </p>
-        )}
+        {hit.about && <p className="text-sm text-gray-700">{hit.about}</p>}
 
-        {/* Skills - Show top 4 in compact form */}
+        {/* Skills */}
         {hit.skills && hit.skills.length > 0 && (
-          <div className="mt-3">
-            <div className="flex flex-wrap justify-center gap-1">
-              {hit.skills.slice(0, 4).map((skill, index) => (
+          <div>
+            <h4 className="text-sm font-medium text-gray-700">Skills</h4>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {hit.skills.map((skill, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700"
+                  className="rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700"
                 >
                   {skill}
                 </span>
               ))}
-              {hit.skills.length > 4 && (
-                <span className="rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                  +{hit.skills.length - 4}
-                </span>
-              )}
             </div>
           </div>
         )}
 
-        {/* Companies - Show top 2 */}
+        {/* Companies */}
         {hit.companies && hit.companies.length > 0 && (
-          <div className="mt-2">
-            <div className="flex flex-wrap justify-center gap-1">
-              {hit.companies.slice(0, 2).map((company, index) => (
+          <div>
+            <h4 className="text-sm font-medium text-gray-700">Companies</h4>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {hit.companies.map((company, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700"
+                  className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600"
                 >
                   {company}
                 </span>
               ))}
-              {hit.companies.length > 2 && (
-                <span className="rounded-full bg-gray-50 px-2 py-1 text-xs text-gray-600">
-                  +{hit.companies.length - 2}
-                </span>
-              )}
             </div>
           </div>
         )}
 
         {/* Quick Contact Actions */}
-        <div className="mt-4 flex justify-center gap-2">
+        <div className="flex gap-2">
           {/* Contact Email */}
           {isValidUrl(hit.contact_email) && (
             <button
@@ -196,8 +173,11 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
             </a>
           )}
 
-          {/* Website */}
-          {isValidUrl(hit.website) && (
+        </div>
+
+        {/* Portfolio Site Button with Icon */}
+        {isValidUrl(hit.website) && (
+          <div>
             <a
               href={
                 hit.website!.startsWith("http")
@@ -206,9 +186,9 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center rounded-full bg-gray-50 p-2 text-gray-700 transition-colors hover:bg-gray-100"
-              title="Website"
+              className="inline-flex items-center gap-2 rounded bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
             >
+              Portfolio site
               <svg
                 className="h-4 w-4"
                 fill="none"
@@ -223,8 +203,8 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
                 />
               </svg>
             </a>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
