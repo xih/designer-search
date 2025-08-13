@@ -57,27 +57,27 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
   };
 
   return (
-    <div className="rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg">
+    <div className="rounded-xl border bg-white p-3 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg md:p-4">
       {/* Profile Header with Ellipsis Menu */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex items-start space-x-3">
+      <div className="mb-2 flex items-start justify-between md:mb-3">
+        <div className="flex items-start space-x-2 md:space-x-3">
           <ProfileAvatar
             profile={hit}
-            size={64}
+            size={48}
             zoom={avatarZoom}
-            className=""
+            className="md:h-16 md:w-16"
           />
           <div className="flex-1">
             {/* Name and Username */}
-            <h3 className="text-lg font-semibold leading-tight text-gray-900">
+            <h3 className="text-sm font-semibold leading-tight text-gray-900 md:text-lg">
               {hit.name || "Unknown"}
             </h3>
             {hit.username && (
-              <p className="text-sm text-gray-500">@{hit.username}</p>
+              <p className="text-xs text-gray-500 md:text-sm">@{hit.username}</p>
             )}
             {/* Location */}
             {hit.location && (
-              <p className="flex items-center gap-1 text-sm text-gray-600">
+              <p className="flex items-center gap-1 text-xs text-gray-600 md:text-sm">
                 <span>📍</span>
                 {hit.location}
               </p>
@@ -120,10 +120,10 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
       </div>
 
       {/* Profile Information - Left Aligned */}
-      <div className="space-y-3">
+      <div className="space-y-2 md:space-y-3">
         {/* Title */}
         {hit.title && (
-          <p className="line-clamp-2 text-sm font-medium text-gray-700">
+          <p className="line-clamp-2 text-xs font-medium text-gray-700 md:text-sm">
             {hit.title}
           </p>
         )}

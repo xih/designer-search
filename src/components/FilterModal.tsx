@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { RefinementList, ClearRefinements } from "react-instantsearch";
+import { RefinementList, ClearRefinements, SortBy } from "react-instantsearch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog";
 import { Button } from "~/components/ui/button";
 import { Filter, X } from "lucide-react";
@@ -9,9 +9,10 @@ import { Filter, X } from "lucide-react";
 interface FilterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  collectionName?: string;
 }
 
-export function FilterModal({ open, onOpenChange }: FilterModalProps) {
+export function FilterModal({ open, onOpenChange, collectionName = "profiles" }: FilterModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
@@ -27,6 +28,29 @@ export function FilterModal({ open, onOpenChange }: FilterModalProps) {
         </DialogHeader>
         
         <div className="space-y-6 py-4">
+          {/* Sort Options */}
+          <div>
+            <h4 className="mb-3 font-medium text-gray-900">Sort By</h4>
+            <SortBy
+              items={[
+                { label: "Most Recent", value: collectionName },
+                {
+                  label: "Most Followers",
+                  value: `${collectionName}/sort/followers_count:desc`,
+                },
+                {
+                  label: "Oldest First",
+                  value: `${collectionName}/sort/profile_created_at:asc`,
+                },
+              ]}
+              classNames={{
+                root: "w-full",
+                select:
+                  "w-full rounded-lg border-2 border-gray-200 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
+              }}
+            />
+          </div>
+
           {/* Skills Filter */}
           <div>
             <h4 className="mb-3 font-medium text-gray-900">Skills</h4>

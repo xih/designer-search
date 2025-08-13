@@ -124,7 +124,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-foreground;
     font-family: "Open Runde", sans-serif;
   }
 }

@@ -12,7 +12,7 @@ import {
 } from "react-instantsearch";
 import { Masonry } from "masonic";
 import useMeasure from "react-use-measure";
-import { useAtom } from 'jotai';
+import { useAtom } from "jotai";
 import { searchClient } from "~/lib/typesense";
 import { ProfileHitMasonry } from "./ProfileHitMasonry";
 import { FilterModal, FilterButton } from "./FilterModal";
@@ -23,12 +23,12 @@ import { ProfileMapView } from "./ProfileMapView";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search } from "lucide-react";
 import { Input } from "~/components/ui/input";
-import { 
-  profileDataAtom, 
-  profilesCompleteAtom, 
+import {
+  profileDataAtom,
+  profilesCompleteAtom,
   profilesLoadingAtom,
   dynamicPageSizeAtom,
-  initialLoadCompletedAtom
+  initialLoadCompletedAtom,
 } from "~/lib/store";
 
 interface ProfileSearchProps {
@@ -128,14 +128,19 @@ function InfiniteMasonryHits() {
 
   // Global state management with Jotai
   const [profileData, setProfileData] = useAtom(profileDataAtom);
-  const [isProfilesComplete, setIsProfilesComplete] = useAtom(profilesCompleteAtom);
+  const [isProfilesComplete, setIsProfilesComplete] =
+    useAtom(profilesCompleteAtom);
   const [globalLoading, setGlobalLoading] = useAtom(profilesLoadingAtom);
 
   // Sync live search data to global state
   useEffect(() => {
     if (hitsItems.length > 0) {
       setProfileData(hitsItems);
-      console.log('🔄 [Masonry] Updated global state with:', hitsItems.length, 'profiles');
+      console.log(
+        "🔄 [Masonry] Updated global state with:",
+        hitsItems.length,
+        "profiles",
+      );
     }
   }, [hitsItems, setProfileData]);
 
@@ -144,9 +149,18 @@ function InfiniteMasonryHits() {
     if (isLastPage && hitsItems.length > 0 && !isProfilesComplete) {
       setIsProfilesComplete(true);
       setGlobalLoading(false);
-      console.log('✅ [Masonry] All profiles loaded and cached globally:', hitsItems.length);
+      console.log(
+        "✅ [Masonry] All profiles loaded and cached globally:",
+        hitsItems.length,
+      );
     }
-  }, [isLastPage, hitsItems.length, isProfilesComplete, setIsProfilesComplete, setGlobalLoading]);
+  }, [
+    isLastPage,
+    hitsItems.length,
+    isProfilesComplete,
+    setIsProfilesComplete,
+    setGlobalLoading,
+  ]);
 
   // Handle infinite scroll loading
   const handleShowMore = useCallback(() => {
@@ -184,8 +198,8 @@ function InfiniteMasonryHits() {
 
   const masonryItems = useMemo(() => {
     // Use live search data if available, otherwise use global state
-    const profilesToProcess = (hitsItems.length > 0) ? hitsItems : profileData;
-    
+    const profilesToProcess = hitsItems.length > 0 ? hitsItems : profileData;
+
     if (!profilesToProcess || !Array.isArray(profilesToProcess)) {
       return [];
     }
@@ -210,7 +224,10 @@ function InfiniteMasonryHits() {
   );
 
   // Handle initial loading state (only when no items exist)
-  if ((status === "loading" || status === "stalled") && masonryItems.length === 0) {
+  if (
+    (status === "loading" || status === "stalled") &&
+    masonryItems.length === 0
+  ) {
     return (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
@@ -253,7 +270,7 @@ function InfiniteMasonryHits() {
           items={masonryItems}
           render={renderMasonryItem}
           columnGutter={16}
-          columnWidth={280}
+          columnWidth={width < 768 ? Math.floor((width - 32) / 2) : 280}
           overscanBy={2}
           itemKey={(item) => item.id}
         />
@@ -289,7 +306,8 @@ function InfiniteMasonryHits() {
             <div className="flex items-center gap-3 text-blue-600">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
               <span className="text-sm font-medium">
-                Loading more profiles... ({masonryItems.length.toLocaleString()})
+                Loading more profiles... ({masonryItems.length.toLocaleString()}
+                )
               </span>
             </div>
           ) : (
@@ -306,15 +324,16 @@ function InfiniteMasonryHits() {
       {/* Cache Status Indicator */}
       {profileData.length > 0 && hitsItems.length === 0 && (
         <div className="mt-4 flex justify-center">
-          <div className="rounded-full bg-purple-50 px-3 py-1 text-xs text-purple-600 font-medium">
-            💾 Using cached data ({masonryItems.length.toLocaleString()} profiles)
+          <div className="rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-600">
+            💾 Using cached data ({masonryItems.length.toLocaleString()}{" "}
+            profiles)
           </div>
         </div>
       )}
 
       {(isLastPage || isProfilesComplete) && masonryItems.length > 0 && (
         <div className="mt-4 flex justify-center">
-          <div className="rounded-full bg-green-50 px-3 py-1 text-xs text-green-600 font-medium">
+          <div className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-600">
             ✓ All {masonryItems.length.toLocaleString()} profiles loaded
           </div>
         </div>
@@ -326,7 +345,9 @@ function InfiniteMasonryHits() {
 // Component to handle dynamic page size configuration
 function DynamicConfigure() {
   const [dynamicPageSize, setDynamicPageSize] = useAtom(dynamicPageSizeAtom);
-  const [initialLoadCompleted, setInitialLoadCompleted] = useAtom(initialLoadCompletedAtom);
+  const [initialLoadCompleted, setInitialLoadCompleted] = useAtom(
+    initialLoadCompletedAtom,
+  );
   const { items } = useInfiniteHits<ProfileHitOptional>();
 
   // Switch to larger page size after initial 50 profiles loaded
@@ -334,9 +355,16 @@ function DynamicConfigure() {
     if (!initialLoadCompleted && items.length >= 50) {
       setDynamicPageSize(500);
       setInitialLoadCompleted(true);
-      console.log('🔄 Switched to larger page size (500) after loading initial 50 profiles');
+      console.log(
+        "🔄 Switched to larger page size (500) after loading initial 50 profiles",
+      );
     }
-  }, [items.length, initialLoadCompleted, setDynamicPageSize, setInitialLoadCompleted]);
+  }, [
+    items.length,
+    initialLoadCompleted,
+    setDynamicPageSize,
+    setInitialLoadCompleted,
+  ]);
 
   return (
     <Configure
@@ -383,12 +411,12 @@ export default function ProfileSearchClient({
     <div
       className={
         currentView === "map"
-          ? "relative"
-          : `container mx-auto px-4 py-8 ${className}`
+          ? "relative bg-white"
+          : `container mx-auto px-4 py-8 bg-white ${className}`
       }
     >
       {/* Debug Panel - Remove this after fixing the issue */}
-      {currentView !== "map" && <TypesenseDebugger />}
+      {/* {currentView !== "map" && <TypesenseDebugger />} */}
 
       <InstantSearch
         indexName={collectionName}
@@ -466,7 +494,7 @@ export default function ProfileSearchClient({
             </div>
 
             {/* Controls Bar */}
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               {/* Left side - Stats and Filter */}
               <div className="flex items-center gap-4">
                 <Stats
@@ -480,30 +508,33 @@ export default function ProfileSearchClient({
                 )}
               </div>
 
-              {/* Right side - View Switcher and Sort Options */}
+              {/* Right side - View Switcher */}
               <div className="flex items-center gap-4">
                 <ViewSwitcher
                   currentView={currentView}
                   onViewChange={setCurrentView}
                 />
-                <SortBy
-                  items={[
-                    { label: "Most Recent", value: collectionName },
-                    {
-                      label: "Most Followers",
-                      value: `${collectionName}/sort/followers_count:desc`,
-                    },
-                    {
-                      label: "Oldest First",
-                      value: `${collectionName}/sort/profile_created_at:asc`,
-                    },
-                  ]}
-                  classNames={{
-                    root: "min-w-[180px]",
-                    select:
-                      "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
-                  }}
-                />
+                {/* Hide sort dropdown on mobile - it will be in the filter modal */}
+                <div className="hidden sm:block">
+                  <SortBy
+                    items={[
+                      { label: "Most Recent", value: collectionName },
+                      {
+                        label: "Most Followers",
+                        value: `${collectionName}/sort/followers_count:desc`,
+                      },
+                      {
+                        label: "Oldest First",
+                        value: `${collectionName}/sort/profile_created_at:asc`,
+                      },
+                    ]}
+                    classNames={{
+                      root: "min-w-[180px]",
+                      select:
+                        "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -523,6 +554,7 @@ export default function ProfileSearchClient({
           <FilterModal
             open={isFilterModalOpen}
             onOpenChange={setIsFilterModalOpen}
+            collectionName={collectionName}
           />
         )}
       </InstantSearch>
