@@ -1,36 +1,31 @@
-import Link from "next/link";
+"use client";
 
-import { LatestPost } from "~/app/_components/post";
-import { auth } from "~/server/auth";
-import { api, HydrateClient } from "~/trpc/server";
-import { Sidebar } from "~/components/Sidebar";
-import { VideoPlayer } from "~/components/VideoPlayer";
-import { KeyboardShortcuts } from "~/components/KeyboardShortcuts";
+import React from "react";
+import ProfileSearch from "~/components/ProfileSearch";
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
-  const session = await auth();
-
-  if (session?.user) {
-    void api.post.getLatest.prefetch();
-  }
-
+export default function HomePage() {
   return (
-    <HydrateClient>
-      <div className="flex min-h-screen bg-gray-50">
-        {/* Sidebar on the left */}
-        <div className="hidden md:block">
-          <Sidebar />
-        </div>
-
-        {/* Main content - Video Player */}
-        <main className="flex flex-1 flex-col items-center justify-center overflow-hidden">
-          <VideoPlayer />
-        </main>
-
-        {/* Keyboard shortcuts card */}
-        <KeyboardShortcuts />
+    <div>
+      <div className="my-16 px-4 md:my-36">
+        <h1
+          className="text-center text-8xl font-bold text-black sm:text-7xl md:text-8xl lg:text-9xl"
+          style={{ fontFamily: "Cardinal Photo, sans-serif" }}
+        >
+          ReadCV Search
+        </h1>
+        <p
+          className="mt-2 text-center text-xl text-gray-600 sm:text-2xl md:text-4xl"
+          style={{ fontFamily: "Cardinal Photo, sans-serif" }}
+        >
+          &quot;Find my&quot; Designers
+        </p>
       </div>
-    </HydrateClient>
+
+      <ProfileSearch
+        showFilters={true}
+        placeholder="Search by name, skills, company, or location..."
+        className="max-w-7xl"
+      />
+    </div>
   );
 }
