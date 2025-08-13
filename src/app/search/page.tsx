@@ -2,28 +2,24 @@
 
 import React from "react";
 import ProfileSearch from "~/components/ProfileSearch";
-import { ProfileHitDemo } from "~/components/ProfileHitDemo";
-import { RealDataDemo } from "~/components/RealDataDemo";
 
 export default function SearchPage() {
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-center text-3xl font-bold">Profile Search</h1>
-        <p className="mt-2 text-center text-gray-600">
-          Find professionals, their skills, and connect with them
+      <div className="my-36">
+        <h1
+          className="text-center text-9xl font-bold"
+          style={{ fontFamily: "Cardinal Photo, sans-serif" }}
+        >
+          ReadCV Search
+        </h1>
+        <p
+          className="mt-2 text-center text-4xl text-gray-600"
+          style={{ fontFamily: "Cardinal Photo, sans-serif" }}
+        >
+          &quot;Find my&quot; Designers
         </p>
       </div>
-
-      {/* Real data demo */}
-      {/* <div className="mb-12">
-        <RealDataDemo />
-      </div> */}
-
-      {/* Demo section to show enhanced profile cards */}
-      {/* <div className="mb-12">
-        <ProfileHitDemo />
-      </div> */}
 
       <ProfileSearch
         showFilters={true}
