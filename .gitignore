@@ -56,3 +56,4 @@ coindesk_screenshot_*.png
 storybook-static/
 
 *.txt
+.env.local

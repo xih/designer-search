@@ -6,6 +6,7 @@ import { ThemeProvider } from "next-themes";
 // import { VoiceRecorderProvider } from "~/hooks/useVoiceRecorder"; // Commented out to disable microphone access
 import { TRPCReactProvider } from "~/trpc/react";
 import { Toaster } from "~/components/ui/sonner";
+import { PostHogProvider } from "~/components/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "ReadCV Search - Find Designers in Milliseconds",
@@ -48,14 +49,16 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        {/* <VoiceRecorderProvider> Commented out to disable microphone access */}
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <TRPCReactProvider>
-            {children}
-            <Toaster position="bottom-right" />
-          </TRPCReactProvider>
-        </ThemeProvider>
-        {/* </VoiceRecorderProvider> */}
+        <PostHogProvider>
+          {/* <VoiceRecorderProvider> Commented out to disable microphone access */}
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <TRPCReactProvider>
+              {children}
+              <Toaster position="bottom-right" />
+            </TRPCReactProvider>
+          </ThemeProvider>
+          {/* </VoiceRecorderProvider> */}
+        </PostHogProvider>
       </body>
     </html>
   );
