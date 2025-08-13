@@ -129,21 +129,15 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   // Sync live search data to global state with storage monitoring
   useEffect(() => {
     if (hitsItems.length > 0) {
-      // Check if we're approaching storage limits before saving
-      if (storageStats.isNearLimit) {
-        console.warn('⚠️ Approaching storage limit, clearing cache before saving new data');
-        clearCache();
-      }
-      
       setProfileData(hitsItems);
       console.log('🔄 Updated global state with:', hitsItems.length, 'profiles');
       console.log('📊 Storage stats:', {
-        size: `${(storageStats.currentSize / 1024).toFixed(1)}KB`,
+        size: `${storageStats.currentSizeKB}KB`,
         profiles: storageStats.profileCount,
-        nearLimit: storageStats.isNearLimit
+        maxCached: storageStats.maxCachedProfiles
       });
     }
-  }, [hitsItems, setProfileData, storageStats.isNearLimit, clearCache, storageStats.currentSize, storageStats.profileCount]);
+  }, [hitsItems, setProfileData, storageStats.currentSizeKB, storageStats.profileCount, storageStats.maxCachedProfiles]);
 
   // Debug logging for batch sizes
   useEffect(() => {
@@ -317,9 +311,9 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
           
           {/* Storage Stats */}
           <div className="text-xs text-gray-500 mt-1">
-            Storage: {(storageStats.currentSize / 1024).toFixed(1)}KB
-            {storageStats.isNearLimit && (
-              <span className="text-orange-600 font-medium"> ⚠️ Near limit</span>
+            Storage: {storageStats.currentSizeKB}KB
+            {storageStats.profileCount >= storageStats.maxCachedProfiles && (
+              <span className="text-blue-600 font-medium"> 📦 Cache full</span>
             )}
           </div>
           

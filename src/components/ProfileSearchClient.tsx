@@ -88,7 +88,7 @@ function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
         value={inputValue}
         onChange={handleInputChange}
         placeholder={placeholder}
-        className="rounded-full border-2 py-3 pl-10 pr-10 text-lg focus:border-transparent focus:ring-2 focus:ring-blue-500"
+        className="rounded-full border-2 bg-white py-3 pl-10 pr-10 text-lg text-gray-900 focus:border-transparent focus:ring-2 focus:ring-blue-500"
       />
       {inputValue && (
         <button

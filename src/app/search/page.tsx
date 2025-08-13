@@ -6,15 +6,15 @@ import ProfileSearch from "~/components/ProfileSearch";
 export default function SearchPage() {
   return (
     <div>
-      <div className="my-36">
+      <div className="my-16 px-4 md:my-36">
         <h1
-          className="text-center text-9xl font-bold"
+          className="text-center text-4xl font-bold sm:text-6xl md:text-8xl lg:text-9xl"
           style={{ fontFamily: "Cardinal Photo, sans-serif" }}
         >
           ReadCV Search
         </h1>
         <p
-          className="mt-2 text-center text-4xl text-gray-600"
+          className="mt-2 text-center text-xl text-gray-600 sm:text-2xl md:text-4xl"
           style={{ fontFamily: "Cardinal Photo, sans-serif" }}
         >
           &quot;Find my&quot; Designers
