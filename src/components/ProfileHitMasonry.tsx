@@ -4,6 +4,12 @@ import React, { useState } from "react";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Skeleton } from "~/components/ui/skeleton";
 import { ProfileAvatar, AVATAR_ZOOM_PRESETS } from "./ProfileAvatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu";
 
 interface ProfileHitMasonryProps {
   hit: ProfileHitOptional;
@@ -39,26 +45,77 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
     return !!(url?.trim() && url !== "");
   };
 
+  const handleGoogleSearch = () => {
+    const parts = [];
+    if (hit.name) parts.push(`"${hit.name}"`);
+    if (hit.location) parts.push(hit.location);
+    if (hit.title) parts.push(hit.title);
+
+    const query = parts.join(" ");
+    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    window.open(googleUrl, "_blank");
+  };
+
   return (
     <div className="rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg">
-      {/* Profile Avatar - Left Aligned */}
-      <div className="mb-3 flex items-start space-x-3">
-        <ProfileAvatar profile={hit} size={64} zoom={avatarZoom} className="" />
-        <div className="flex-1">
-          {/* Name and Username */}
-          <h3 className="text-lg font-semibold leading-tight text-gray-900">
-            {hit.name || "Unknown"}
-          </h3>
-          {hit.username && (
-            <p className="text-sm text-gray-500">@{hit.username}</p>
-          )}
-          {/* Location */}
-          {hit.location && (
-            <p className="flex items-center gap-1 text-sm text-gray-600">
-              <span>📍</span>
-              {hit.location}
-            </p>
-          )}
+      {/* Profile Header with Ellipsis Menu */}
+      <div className="mb-3 flex items-start justify-between">
+        <div className="flex items-start space-x-3">
+          <ProfileAvatar
+            profile={hit}
+            size={64}
+            zoom={avatarZoom}
+            className=""
+          />
+          <div className="flex-1">
+            {/* Name and Username */}
+            <h3 className="text-lg font-semibold leading-tight text-gray-900">
+              {hit.name || "Unknown"}
+            </h3>
+            {hit.username && (
+              <p className="text-sm text-gray-500">@{hit.username}</p>
+            )}
+            {/* Location */}
+            {hit.location && (
+              <p className="flex items-center gap-1 text-sm text-gray-600">
+                <span>📍</span>
+                {hit.location}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Ellipsis Dropdown Menu */}
+        <div
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-200 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-600">
+                <svg
+                  className="h-4 w-4"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                </svg>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleGoogleSearch}>
+                <svg
+                  className="mr-2 h-4 w-4"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                </svg>
+                Google Search
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -79,7 +136,6 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
             </span>
           </div>
         )}
-
 
         {/* About section */}
         {hit.about && <p className="text-sm text-gray-700">{hit.about}</p>}
@@ -172,7 +228,6 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               </svg>
             </a>
           )}
-
         </div>
 
         {/* Portfolio Site Button with Icon */}
@@ -186,7 +241,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+              className="inline-flex items-center gap-2 rounded bg-gray-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-900"
             >
               Portfolio site
               <svg
