@@ -44,7 +44,54 @@ interface ProfileSearchProps {
   className?: string;
 }
 
-// Optimized suggestions dropdown component with React.memo
+// Default suggestions shown when input is empty and focused
+const DefaultSearchSuggestions = React.memo(function DefaultSearchSuggestions({
+  onSuggestionSelect,
+  isVisible,
+}: {
+  onSuggestionSelect: (suggestion: string) => void;
+  isVisible: boolean;
+}) {
+  const defaultSuggestions = [
+    // Roles
+    { category: "Role", items: ["design engineer", "product designer", "brand designer", "researcher"] },
+    // Companies  
+    { category: "Companies", items: ["apple", "google", "meta", "facebook", "openai", "deepmind"] },
+    // Locations
+    { category: "Locations", items: ["san francisco", "new york", "worldwide"] },
+  ];
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="absolute top-full z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+      <div className="p-4">
+        {defaultSuggestions.map((section) => (
+          <div key={section.category} className="mb-4 last:mb-0">
+            <h4 className="mb-2 text-sm font-medium text-gray-900">{section.category}</h4>
+            <div className="flex flex-wrap gap-2">
+              {section.items.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevent blur event on input
+                    onSuggestionSelect(item);
+                  }}
+                  className="rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200"
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// Dynamic suggestions dropdown component with React.memo
 const SearchSuggestions = React.memo(function SearchSuggestions({
   query,
   onSuggestionSelect,
@@ -111,7 +158,11 @@ const SearchSuggestions = React.memo(function SearchSuggestions({
         {suggestions.map((suggestion, index) => (
           <button
             key={suggestion}
-            onClick={() => onSuggestionSelect(suggestion)}
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault(); // Prevent blur event on input
+              onSuggestionSelect(suggestion);
+            }}
             className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
           >
             <Search className="mr-3 h-4 w-4 text-gray-400" />
@@ -181,20 +232,29 @@ function DebouncedSearchBox({
 
   const handleSuggestionSelect = useCallback(
     (suggestion: string) => {
+      console.log("🔍 Suggestion selected:", suggestion); // Debug log
+      
+      // Clear any pending debounced calls
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      // Update input value and execute search immediately
       setInputValue(suggestion);
-      refine(suggestion);
+      refine(suggestion); // Execute search immediately
       setShowSuggestions(false);
-      inputRef.current?.blur();
+      
+      // Keep focus on input instead of blurring
+      // inputRef.current?.blur();
     },
     [refine],
   );
 
   const handleFocus = useCallback(() => {
     setIsFocused(true);
-    if (inputValue.length >= 2) {
-      setShowSuggestions(true);
-    }
-  }, [inputValue.length]);
+    // Show suggestions when focused, regardless of input length (for default suggestions)
+    setShowSuggestions(true);
+  }, []);
 
   const handleBlur = useCallback(() => {
     setIsFocused(false);
@@ -260,12 +320,21 @@ function DebouncedSearchBox({
         </button>
       )}
 
-      <SearchSuggestions
-        query={inputValue}
-        onSuggestionSelect={handleSuggestionSelect}
-        isVisible={showSuggestions && isFocused}
-        profileData={memoizedProfileData}
-      />
+      {/* Show default suggestions when input is empty and focused */}
+      {inputValue.length === 0 ? (
+        <DefaultSearchSuggestions
+          onSuggestionSelect={handleSuggestionSelect}
+          isVisible={showSuggestions && isFocused}
+        />
+      ) : (
+        /* Show dynamic suggestions when user is typing */
+        <SearchSuggestions
+          query={inputValue}
+          onSuggestionSelect={handleSuggestionSelect}
+          isVisible={showSuggestions && isFocused && inputValue.length >= 2}
+          profileData={memoizedProfileData}
+        />
+      )}
     </div>
   );
 }
