@@ -8,7 +8,7 @@ export default function SearchPage() {
     <div>
       <div className="my-16 px-4 md:my-36">
         <h1
-          className="text-center text-4xl font-bold sm:text-6xl md:text-8xl lg:text-9xl"
+          className="text-center text-8xl font-bold text-black sm:text-7xl md:text-8xl lg:text-9xl"
           style={{ fontFamily: "Cardinal Photo, sans-serif" }}
         >
           ReadCV Search
