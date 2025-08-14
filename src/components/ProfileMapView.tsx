@@ -173,9 +173,10 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (isDrawerOpen && isMobile && e.touches[0]?.clientY < 100) {
+      const firstTouch = e.touches[0];
+      if (isDrawerOpen && isMobile && firstTouch && firstTouch.clientY < 100) {
         console.log("🤏 [TOUCH-MOVE] Touch moving near top of screen:", {
-          clientY: e.touches[0]?.clientY,
+          clientY: firstTouch.clientY,
           hypothesis: "Potential pull-to-refresh zone",
         });
       }
