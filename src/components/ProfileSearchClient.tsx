@@ -19,6 +19,7 @@ import {
 import { Masonry } from "masonic";
 import useMeasure from "react-use-measure";
 import { useAtom } from "jotai";
+import { useRouter, useSearchParams } from "next/navigation";
 import { searchClient } from "~/lib/typesense";
 import { ProfileHitMasonry } from "./ProfileHitMasonry";
 import { FilterModal, FilterButton } from "./FilterModal";
@@ -54,11 +55,25 @@ const DefaultSearchSuggestions = React.memo(function DefaultSearchSuggestions({
 }) {
   const defaultSuggestions = [
     // Roles
-    { category: "Role", items: ["design engineer", "product designer", "brand designer", "researcher"] },
-    // Companies  
-    { category: "Companies", items: ["apple", "google", "meta", "facebook", "openai", "deepmind"] },
+    {
+      category: "Role",
+      items: [
+        "design engineer",
+        "product designer",
+        "brand designer",
+        "researcher",
+      ],
+    },
+    // Companies
+    {
+      category: "Companies",
+      items: ["apple", "google", "meta", "facebook", "openai", "deepmind"],
+    },
     // Locations
-    { category: "Locations", items: ["san francisco", "new york", "worldwide"] },
+    {
+      category: "Locations",
+      items: ["san francisco", "new york", "worldwide"],
+    },
   ];
 
   if (!isVisible) return null;
@@ -68,7 +83,9 @@ const DefaultSearchSuggestions = React.memo(function DefaultSearchSuggestions({
       <div className="p-4">
         {defaultSuggestions.map((section) => (
           <div key={section.category} className="mb-4 last:mb-0">
-            <h4 className="mb-2 text-sm font-medium text-gray-900">{section.category}</h4>
+            <h4 className="mb-2 text-sm font-medium text-gray-900">
+              {section.category}
+            </h4>
             <div className="flex flex-wrap gap-2">
               {section.items.map((item) => (
                 <button
@@ -174,13 +191,8 @@ const SearchSuggestions = React.memo(function SearchSuggestions({
   );
 });
 
-
 // Optimized search box component with autocomplete
-function DebouncedSearchBox({
-  placeholder,
-}: {
-  placeholder: string;
-}) {
+function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
   const { query, refine } = useSearchBox();
   const [inputValue, setInputValue] = useState(query);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -192,10 +204,7 @@ function DebouncedSearchBox({
   const [profileData] = useAtom(profileDataAtom);
 
   // Memoize profile data to prevent unnecessary re-renders
-  const memoizedProfileData = useMemo(
-    () => profileData,
-    [profileData.length],
-  );
+  const memoizedProfileData = useMemo(() => profileData, [profileData.length]);
 
   const debouncedRefine = useCallback(
     (value: string) => {
@@ -233,17 +242,17 @@ function DebouncedSearchBox({
   const handleSuggestionSelect = useCallback(
     (suggestion: string) => {
       console.log("🔍 Suggestion selected:", suggestion); // Debug log
-      
+
       // Clear any pending debounced calls
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      
+
       // Update input value and execute search immediately
       setInputValue(suggestion);
       refine(suggestion); // Execute search immediately
       setShowSuggestions(false);
-      
+
       // Keep focus on input instead of blurring
       // inputRef.current?.blur();
     },
@@ -425,8 +434,7 @@ function InfiniteMasonryHits() {
 
   const masonryItems = useMemo(() => {
     // Use live search data if available, otherwise use global state
-    const profilesToProcess =
-      hitsItems.length > 0 ? hitsItems : profileData;
+    const profilesToProcess = hitsItems.length > 0 ? hitsItems : profileData;
     const currentDataSource = hitsItems.length > 0 ? "hits" : "cache";
 
     if (!profilesToProcess || !Array.isArray(profilesToProcess)) {
@@ -484,11 +492,8 @@ function InfiniteMasonryHits() {
     [],
   );
 
-  // Error handler for Masonry component - MOVED BEFORE CONDITIONAL RETURNS
+  // Error handler for Masonry component
   const handleMasonryError = useCallback(() => {
-    console.error(
-      "🚨 Masonry component error detected, switching to fallback grid",
-    );
     setMasonryError(true);
     setMasonryKey((prev) => prev + 1);
   }, []);
@@ -525,7 +530,6 @@ function InfiniteMasonryHits() {
         />
       );
     } catch (error) {
-      console.error("🚨 Masonry render error:", error);
       // Note: We can't call handleMasonryError here as it would change state during render
       // Instead, we'll use an effect to handle this
       return renderFallbackGrid();
@@ -693,12 +697,58 @@ export default function ProfileSearchClient({
   className = "",
 }: ProfileSearchProps) {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<ViewType>("masonry");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Determine current view from URL search params
+  const getCurrentViewFromParams = useMemo((): ViewType => {
+    const view = searchParams.get('view');
+    if (view === "table") return "table";
+    if (view === "map") return "map";
+    return "masonry"; // Default view
+  }, [searchParams]);
+
+  const [currentView, setCurrentView] = useState<ViewType>(getCurrentViewFromParams);
+
 
   const collectionName =
     indexName ??
     process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME ??
     "profiles";
+
+
+  // Update view when search params change
+  useEffect(() => {
+    const paramsView = getCurrentViewFromParams;
+    if (paramsView !== currentView) {
+      setCurrentView(paramsView);
+    }
+  }, [getCurrentViewFromParams, currentView]);
+
+  // Handle view change with URL search parameters
+  const handleViewChange = useCallback(
+    (newView: ViewType) => {
+      // Skip if already in the correct view
+      if (newView === currentView) {
+        return;
+      }
+
+      // Immediately update state for instant UI feedback
+      setCurrentView(newView);
+
+      // Update URL with search parameters
+      const params = new URLSearchParams(searchParams.toString());
+      if (newView === "masonry") {
+        params.delete('view'); // Default view doesn't need parameter
+      } else {
+        params.set('view', newView);
+      }
+      
+      const newUrl = params.toString() ? `/?${params.toString()}` : '/';
+      router.push(newUrl, { scroll: false });
+    },
+    [router, currentView, searchParams],
+  );
 
   return (
     <div
@@ -712,6 +762,7 @@ export default function ProfileSearchClient({
       {/* {currentView !== "map" && <TypesenseDebugger />} */}
 
       <InstantSearch
+        key={`search-${collectionName}`}
         indexName={collectionName}
         searchClient={searchClient}
         initialUiState={{
@@ -753,7 +804,7 @@ export default function ProfileSearchClient({
               <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
                 <ViewSwitcher
                   currentView={currentView}
-                  onViewChange={setCurrentView}
+                  onViewChange={handleViewChange}
                 />
                 <SortBy
                   items={[
@@ -805,7 +856,7 @@ export default function ProfileSearchClient({
               <div className="flex items-center gap-4">
                 <ViewSwitcher
                   currentView={currentView}
-                  onViewChange={setCurrentView}
+                  onViewChange={handleViewChange}
                 />
                 {/* Hide sort dropdown on mobile - it will be in the filter modal */}
                 <div className="hidden sm:block">
