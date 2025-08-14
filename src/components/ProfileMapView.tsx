@@ -1,10 +1,18 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { useInfiniteHits, useInstantSearch } from "react-instantsearch";
 import { Map, Marker } from "react-map-gl/mapbox";
-import { useAtom } from 'jotai';
-import { Drawer } from 'vaul';
+import type { MapRef } from "react-map-gl/mapbox";
+import { useAtom } from "jotai";
+import { Drawer } from "vaul";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sheet,
   SheetContent,
@@ -16,12 +24,12 @@ import {
 import type { ProfileHitOptional } from "~/types/typesense";
 import { ProfileCard } from "./ProfileCard";
 import { ProfileAvatar } from "./ProfileAvatar";
-import { 
-  profileDataAtom, 
-  profilesCompleteAtom, 
+import {
+  profileDataAtom,
+  profilesCompleteAtom,
   profilesLoadingAtom,
   initialLoadCompletedAtom,
-  dynamicPageSizeAtom
+  dynamicPageSizeAtom,
 } from "~/lib/store";
 
 interface ProfileMapViewProps {
@@ -33,43 +41,50 @@ interface MapProfile extends ProfileHitOptional {
   latitude: number;
 }
 
-
 // Custom component to render ProfileAvatars using Marker for proper globe projection
 function ProfileAvatarOverlay({
   profiles,
   onProfileClick,
+  selectedProfileId,
 }: {
   profiles: MapProfile[];
   onProfileClick: (profile: ProfileHitOptional) => void;
+  selectedProfileId?: string;
 }) {
   return (
     <>
-      {profiles.map((profile) => (
-        <Marker
-          key={profile.id}
-          longitude={profile.longitude}
-          latitude={profile.latitude}
-          anchor="center"
-        >
-          <div
-            className="cursor-pointer transition-transform hover:scale-110"
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent map click event
-              onProfileClick(profile);
-            }}
+      {profiles.map((profile) => {
+        const isSelected = selectedProfileId === profile.id;
+        return (
+          <Marker
+            key={profile.id}
+            longitude={profile.longitude}
+            latitude={profile.latitude}
+            anchor="center"
           >
-            <ProfileAvatar
-              profile={profile}
-              size={50}
-              className="shadow-lg ring-2 ring-white hover:ring-blue-500"
-            />
-          </div>
-        </Marker>
-      ))}
+            <div
+              className="cursor-pointer transition-transform hover:scale-110"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent map click event
+                onProfileClick(profile);
+              }}
+            >
+              <ProfileAvatar
+                profile={profile}
+                size={50}
+                className={`shadow-lg ring-2 transition-all ${
+                  isSelected
+                    ? "scale-110 ring-4 ring-blue-500"
+                    : "ring-white hover:ring-blue-500"
+                }`}
+              />
+            </div>
+          </Marker>
+        );
+      })}
     </>
   );
 }
-
 
 export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const {
@@ -81,18 +96,25 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const [selectedProfile, setSelectedProfile] =
     useState<ProfileHitOptional | null>(null);
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const mapRef = useRef<MapRef>(null);
+
   // Global state management with Jotai
   const [profileData, setProfileData] = useAtom(profileDataAtom);
-  const [isProfilesComplete, setIsProfilesComplete] = useAtom(profilesCompleteAtom);
+  const [isProfilesComplete, setIsProfilesComplete] =
+    useAtom(profilesCompleteAtom);
   const [isLoading, setIsLoading] = useAtom(profilesLoadingAtom);
-  const [initialLoadCompleted, setInitialLoadCompleted] = useAtom(initialLoadCompletedAtom);
+  const [initialLoadCompleted, setInitialLoadCompleted] = useAtom(
+    initialLoadCompletedAtom,
+  );
   const [dynamicPageSize, setDynamicPageSize] = useAtom(dynamicPageSizeAtom);
 
   // Process profiles with lat_lng_field coordinates
   const mapProfiles = useMemo(() => {
     // Use live search data if available, otherwise use global state
-    const profilesToProcess = (hitsItems.length > 0) ? hitsItems : profileData;
-    
+    const profilesToProcess = hitsItems.length > 0 ? hitsItems : profileData;
+
     if (!profilesToProcess || !Array.isArray(profilesToProcess)) return [];
 
     const profilesWithCoords: MapProfile[] = [];
@@ -100,7 +122,11 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
 
     profilesToProcess.forEach((profile) => {
       // Use lat_lng_field from Typesense geopoint field
-      if (!profile?.lat_lng_field || !Array.isArray(profile.lat_lng_field) || profile.lat_lng_field.length !== 2) {
+      if (
+        !profile?.lat_lng_field ||
+        !Array.isArray(profile.lat_lng_field) ||
+        profile.lat_lng_field.length !== 2
+      ) {
         return;
       }
 
@@ -112,8 +138,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
 
       // Add small offset for profiles in the same city to prevent overlap
       const offset = (locationCounts[locationKey] - 1) * 0.005; // Smaller offset
-      const angle =
-        (locationCounts[locationKey] - 1) * 137.5 * (Math.PI / 180); // Golden angle
+      const angle = (locationCounts[locationKey] - 1) * 137.5 * (Math.PI / 180); // Golden angle
 
       profilesWithCoords.push({
         ...profile,
@@ -129,6 +154,9 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isProfileSwitching, setIsProfileSwitching] = useState(false);
+  const [isManuallyClosing, setIsManuallyClosing] = useState(false);
+  const [lastManualCloseTime, setLastManualCloseTime] = useState(0);
+  const hasUserInteracted = useRef(false);
 
   // Check if device is mobile
   useEffect(() => {
@@ -136,32 +164,81 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       setIsMobile(window.innerWidth < 768);
     };
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   const handleProfileClick = useCallback(
     (profile: ProfileHitOptional) => {
+      console.log("📱 [PROFILE-CLICK] Profile clicked:", {
+        profileName: profile.name,
+        isMobile,
+        isDrawerOpen,
+        isSheetOpen,
+        selectedProfile: selectedProfile?.name,
+        isProfileSwitching,
+      });
+
+      // Mark that user has interacted with the map
+      hasUserInteracted.current = true;
+
+      // Create URL-friendly slug from profile name (more secure than raw ID)
+      const profileSlug =
+        profile.name
+          ?.toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "") || profile.id;
+
+      // Update URL with profile slug for shareability
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("profile", profileSlug);
+      router.push(`?${params.toString()}`, { scroll: false });
+
+      // Always zoom for manual clicks (this is triggered by avatar clicks, not URL effects)
+      if (mapRef.current && profile.lat_lng_field) {
+        mapRef.current.flyTo({
+          center: [profile.lat_lng_field[1], profile.lat_lng_field[0]], // [longitude, latitude]
+          zoom: 5,
+          duration: 1000,
+        });
+      }
+
       // If sheet/drawer is already open, we're switching profiles
       if ((isMobile && isDrawerOpen) || (!isMobile && isSheetOpen)) {
+        console.log("📱 [PROFILE-SWITCH] Switching profiles");
         setIsProfileSwitching(true);
         setSelectedProfile(profile);
         // Reset the switching flag after a brief delay
         setTimeout(() => {
+          console.log(
+            "📱 [PROFILE-SWITCH-RESET] Resetting profile switching flag",
+          );
           setIsProfileSwitching(false);
         }, 100);
       } else {
         // First time opening
+        console.log("📱 [FIRST-OPEN] First time opening drawer/sheet");
         setSelectedProfile(profile);
         if (isMobile) {
+          console.log("📱 [DRAWER-OPEN] Setting drawer open to true");
           setIsDrawerOpen(true);
         } else {
+          console.log("📱 [SHEET-OPEN] Setting sheet open to true");
           setIsSheetOpen(true);
         }
       }
       onProfileSelect?.(profile);
     },
-    [onProfileSelect, isMobile, isDrawerOpen, isSheetOpen, isProfileSwitching, selectedProfile],
+    [
+      onProfileSelect,
+      isMobile,
+      isDrawerOpen,
+      isSheetOpen,
+      isProfileSwitching,
+      selectedProfile,
+      searchParams,
+      router,
+    ],
   );
 
   // Sync live search data to global state
@@ -171,7 +248,6 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     }
   }, [hitsItems, setProfileData]);
 
-
   // Progressive auto-loading: Load initial 50, then continue with larger batches
   useEffect(() => {
     if (status === "loading" || isLastPage || isLoading) return;
@@ -180,7 +256,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
 
     const autoLoadMore = () => {
       setIsLoading(true);
-      
+
       // Switch to larger page size after first 50 profiles
       if (!initialLoadCompleted && hitsItems.length >= 50) {
         setDynamicPageSize(500);
@@ -195,7 +271,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         return;
       }
       showMore();
-      
+
       // Reset after a delay
       setTimeout(() => {
         setIsLoading(false);
@@ -206,7 +282,20 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     const delay = !initialLoadCompleted && hitsItems.length < 50 ? 100 : 300;
     const timer = setTimeout(autoLoadMore, delay);
     return () => clearTimeout(timer);
-  }, [status, isLastPage, isLoading, showMore, hitsItems.length, isProfilesComplete, profileData.length, initialLoadCompleted, setInitialLoadCompleted, dynamicPageSize, setDynamicPageSize, setIsLoading]);
+  }, [
+    status,
+    isLastPage,
+    isLoading,
+    showMore,
+    hitsItems.length,
+    isProfilesComplete,
+    profileData.length,
+    initialLoadCompleted,
+    setInitialLoadCompleted,
+    dynamicPageSize,
+    setDynamicPageSize,
+    setIsLoading,
+  ]);
 
   // Mark profiles as complete when loading is done
   useEffect(() => {
@@ -214,19 +303,137 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       setIsProfilesComplete(true);
       setIsLoading(false);
     }
-  }, [isLastPage, hitsItems.length, isProfilesComplete, setIsProfilesComplete, setIsLoading]);
+  }, [
+    isLastPage,
+    hitsItems.length,
+    isProfilesComplete,
+    setIsProfilesComplete,
+    setIsLoading,
+  ]);
+
+  // Check for profile slug/ID in URL on page load and auto-select profile
+  useEffect(() => {
+    const profileParam = searchParams.get("profile");
+
+    console.log("🔗 [URL-EFFECT] URL profile param changed:", {
+      profileParam,
+      mapProfilesCount: mapProfiles.length,
+      selectedProfile: selectedProfile?.name,
+      isManuallyClosing,
+      lastManualCloseTime,
+    });
+
+    // Don't process URL changes if we're manually closing or recently closed
+    const timeSinceManualClose = Date.now() - lastManualCloseTime;
+    if (isManuallyClosing || timeSinceManualClose < 2000) {
+      // Increased timeout
+      console.log("🔗 [URL-IGNORE] Ignoring URL change due to manual close");
+      return;
+    }
+
+    if (profileParam && mapProfiles.length > 0 && !selectedProfile) {
+      // Only treat as direct link if user hasn't interacted with the map yet
+      // This prevents programmatic URL changes from triggering high zoom
+      const isActualDirectLink = !hasUserInteracted.current;
+
+      // Try to find by slug first (name-based), then fallback to ID
+      const profileToSelect = mapProfiles.find((p) => {
+        const slug =
+          p.name
+            ?.toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "") || p.id;
+        return slug === profileParam || p.id === profileParam;
+      });
+
+      if (profileToSelect) {
+        setSelectedProfile(profileToSelect);
+
+        // Only zoom with high level for true direct links
+        if (
+          mapRef.current &&
+          profileToSelect.lat_lng_field &&
+          isActualDirectLink
+        ) {
+          setTimeout(() => {
+            mapRef.current?.flyTo({
+              center: [
+                profileToSelect.lat_lng_field![1],
+                profileToSelect.lat_lng_field![0],
+              ],
+              zoom: 10,
+              duration: 2000,
+            });
+          }, 500); // Small delay to ensure map is ready
+        }
+
+        onProfileSelect?.(profileToSelect);
+      }
+
+      // Reset the flag after a short delay
+      if (isActualDirectLink) {
+        // Direct link handling completed
+      }
+    } else if (!profileParam && selectedProfile && !isManuallyClosing) {
+      setSelectedProfile(null);
+      setIsSheetOpen(false);
+      setIsDrawerOpen(false);
+    }
+  }, [
+    searchParams,
+    mapProfiles,
+    selectedProfile,
+    onProfileSelect,
+    isManuallyClosing,
+    lastManualCloseTime,
+  ]);
 
   // Open sheet/drawer when profile is selected for the first time
   useEffect(() => {
+    console.log("📱 [DRAWER-EFFECT] Profile selection effect triggered:", {
+      selectedProfile: selectedProfile?.name,
+      isMobile,
+      isDrawerOpen,
+      isSheetOpen,
+      isProfileSwitching,
+      isManuallyClosing,
+    });
+
+    // Don't auto-open if we're manually closing
+    if (isManuallyClosing) {
+      console.log("📱 [DRAWER-EFFECT-SKIP] Skipping due to manual closing");
+      return;
+    }
+
     if (selectedProfile) {
       if (isMobile && !isDrawerOpen) {
+        console.log("📱 [DRAWER-EFFECT-OPEN] Opening drawer from effect");
         setIsDrawerOpen(true);
       } else if (!isMobile && !isSheetOpen) {
+        console.log("📱 [SHEET-EFFECT-OPEN] Opening sheet from effect");
         setIsSheetOpen(true);
       }
+    } else if (!isManuallyClosing) {
+      console.log(
+        "📱 [DRAWER-EFFECT-CLEAR] No selected profile, clearing states",
+      );
+      if (isSheetOpen) {
+        console.log("📱 [SHEET-EFFECT-CLOSE] Closing sheet from effect");
+        setIsSheetOpen(false);
+      }
+      if (isDrawerOpen) {
+        console.log("📱 [DRAWER-EFFECT-CLOSE] Closing drawer from effect");
+        setIsDrawerOpen(false);
+      }
     }
-  }, [selectedProfile, isMobile, isDrawerOpen, isSheetOpen]);
-
+  }, [
+    selectedProfile,
+    isMobile,
+    isDrawerOpen,
+    isSheetOpen,
+    isManuallyClosing,
+    isProfileSwitching,
+  ]);
 
   if (status === "loading" && mapProfiles.length === 0) {
     return (
@@ -235,7 +442,9 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
           <div className="text-center">
             <div className="text-lg font-medium">Loading Globe View</div>
-            <div className="text-sm text-gray-500">Auto-loading all profiles...</div>
+            <div className="text-sm text-gray-500">
+              Auto-loading all profiles...
+            </div>
           </div>
         </div>
       </div>
@@ -273,6 +482,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   return (
     <div className="fixed inset-0 z-0">
       <Map
+        ref={mapRef}
         initialViewState={{
           longitude: -122.4194,
           latitude: 37.7749,
@@ -282,12 +492,79 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         mapStyle="mapbox://styles/mapbox/light-v11"
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ""}
         onClick={(e) => {
-          // Only close sheet/drawer if clicking on empty map (not on markers)
           const features = e.features;
-          if (!features || features.length === 0) {
+
+          console.log("🗺️ [MAP-CLICK] Map clicked:", {
+            featuresCount: features?.length ?? 0,
+            isMobile,
+            isDrawerOpen,
+            isSheetOpen,
+            selectedProfile: selectedProfile?.name,
+          });
+
+          // DESKTOP LOGIC: Close sheet on any empty map click
+          if (!isMobile && (!features || features.length === 0)) {
+            console.log(
+              "🗺️ [DESKTOP-CLOSE] Closing desktop sheet on empty map click",
+            );
+
+            // Record the time of manual close and set flag
+            const closeTime = Date.now();
+            setLastManualCloseTime(closeTime);
+            setIsManuallyClosing(true);
+
             setSelectedProfile(null);
             setIsSheetOpen(false);
+
+            // Clear profile from URL when closing
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("profile");
+
+            router.push(`?${params.toString()}`, { scroll: false });
+
+            // Reset the flag after URL has time to update
+            setTimeout(() => {
+              console.log(
+                "🗺️ [MANUAL-CLOSE-RESET] Resetting manual closing flag",
+              );
+              setIsManuallyClosing(false);
+            }, 500);
+          }
+          // MOBILE LOGIC: Close drawer on empty map click only if profile is selected
+          else if (
+            isMobile &&
+            (!features || features.length === 0) &&
+            selectedProfile
+          ) {
+            console.log(
+              "🗺️ [MOBILE-CLOSE] Closing mobile drawer on empty map click",
+            );
+
+            // Record the time of manual close and set flag
+            const closeTime = Date.now();
+            setLastManualCloseTime(closeTime);
+            setIsManuallyClosing(true);
+
+            setSelectedProfile(null);
             setIsDrawerOpen(false);
+
+            // Clear profile from URL when closing
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("profile");
+
+            router.push(`?${params.toString()}`, { scroll: false });
+
+            // Reset the flag after URL has time to update
+            setTimeout(() => {
+              console.log(
+                "🗺️ [MOBILE-CLOSE-RESET] Resetting manual closing flag",
+              );
+              setIsManuallyClosing(false);
+            }, 2000);
+          } else {
+            console.log(
+              "🗺️ [MAP-IGNORE] Map click ignored - clicked on feature or conditions not met",
+            );
           }
         }}
       >
@@ -295,12 +572,13 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         <ProfileAvatarOverlay
           profiles={mapProfiles}
           onProfileClick={handleProfileClick}
+          selectedProfileId={selectedProfile?.id}
         />
       </Map>
 
       {/* Desktop Sheet for Profile Details */}
-      <Sheet 
-        open={!isMobile && isSheetOpen} 
+      <Sheet
+        open={!isMobile && isSheetOpen}
         modal={false}
         onOpenChange={(open) => {
           // Only respond to manual close events from the X button
@@ -314,10 +592,7 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         <SheetPortal>
           {/* Custom overlay with no opacity */}
           <SheetOverlay className="bg-transparent backdrop-blur-none" />
-          <SheetContent 
-            side="right" 
-            className="w-[400px] sm:w-[540px]" 
-          >
+          <SheetContent side="right" className="w-[400px] sm:w-[540px]">
             <SheetHeader>
               <SheetTitle>Profile Details</SheetTitle>
             </SheetHeader>
@@ -329,21 +604,56 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       </Sheet>
 
       {/* Mobile Drawer for Profile Details */}
-      <Drawer.Root 
-        open={isDrawerOpen} 
+      <Drawer.Root
+        open={isDrawerOpen}
+        modal={false}
         onOpenChange={(open) => {
+          console.log("📱 [DRAWER-CHANGE] onOpenChange called:", {
+            open,
+            currentDrawerOpen: isDrawerOpen,
+            isProfileSwitching,
+            selectedProfile: selectedProfile?.name,
+            isManuallyClosing,
+          });
+
+          // Ignore automatic close events if we're manually closing or switching profiles
+          if (!open && (isManuallyClosing || isProfileSwitching)) {
+            console.log(
+              "📱 [DRAWER-IGNORE] Ignoring automatic close during manual close or profile switch",
+            );
+            return;
+          }
+
           // Don't close the drawer if we're just switching profiles
           if (!open && !isProfileSwitching) {
+            console.log("📱 [DRAWER-CLOSE] Closing drawer and clearing URL");
+
+            // Set manual closing flag to prevent race conditions
+            const closeTime = Date.now();
+            setLastManualCloseTime(closeTime);
+            setIsManuallyClosing(true);
+
+            // Clear profile from URL when closing
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("profile");
+            router.push(`?${params.toString()}`, { scroll: false });
+
             setIsDrawerOpen(false);
             setSelectedProfile(null);
+
+            // Reset flag after delay
+            setTimeout(() => {
+              setIsManuallyClosing(false);
+            }, 2000);
           } else if (open && !isDrawerOpen) {
+            console.log("📱 [DRAWER-REOPEN] Reopening drawer");
             setIsDrawerOpen(true);
           }
         }}
       >
         <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex h-[85%] flex-col rounded-t-[10px] bg-white">
+          <Drawer.Overlay className="fixed inset-0 z-50" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex flex-col rounded-t-[10px] border-t bg-white">
             <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-gray-300" />
             <div className="flex-1 overflow-y-auto p-4">
               {selectedProfile && (
@@ -354,8 +664,33 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
                     </Drawer.Title>
                     <button
                       onClick={() => {
+                        console.log(
+                          "📱 [DRAWER-X-CLICK] X button clicked to close drawer",
+                        );
+
+                        // Set manual closing flag FIRST to prevent race conditions
+                        const closeTime = Date.now();
+                        setLastManualCloseTime(closeTime);
+                        setIsManuallyClosing(true);
+
+                        // Clear states immediately
                         setIsDrawerOpen(false);
                         setSelectedProfile(null);
+
+                        // Clear profile from URL when closing
+                        const params = new URLSearchParams(
+                          searchParams.toString(),
+                        );
+                        params.delete("profile");
+                        router.push(`?${params.toString()}`, { scroll: false });
+
+                        // Reset the flag after a longer delay to prevent URL restoration
+                        setTimeout(() => {
+                          console.log(
+                            "📱 [MANUAL-CLOSE-RESET] Resetting manual closing flag",
+                          );
+                          setIsManuallyClosing(false);
+                        }, 2000); // Increased timeout
                       }}
                       className="text-gray-500 hover:text-gray-700"
                     >
@@ -393,7 +728,6 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
           </div>
         </div>
       )}
-
     </div>
   );
 }
