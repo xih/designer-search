@@ -156,6 +156,12 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const [isProfileSwitching, setIsProfileSwitching] = useState(false);
   const [isManuallyClosing, setIsManuallyClosing] = useState(false);
   const [lastManualCloseTime, setLastManualCloseTime] = useState(0);
+  // 🎛️ TWEAK THIS: Adjust drawer height percentages - [initial, medium, full]
+  // Higher percentages = drawer takes up more of the screen
+  const snapPoints = [0.3, 0.5];
+  const [activeSnapPoint, setActiveSnapPoint] = useState<
+    number | string | null
+  >(snapPoints[0] as number | string | null);
   const hasUserInteracted = useRef(false);
 
   // Check if device is mobile
@@ -222,9 +228,11 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         if (isMobile) {
           console.log("📱 [DRAWER-OPEN] Setting drawer open to true");
           setIsDrawerOpen(true);
+          setIsSheetOpen(false); // Ensure sheet is closed on mobile
         } else {
           console.log("📱 [SHEET-OPEN] Setting sheet open to true");
           setIsSheetOpen(true);
+          setIsDrawerOpen(false); // Ensure drawer is closed on desktop
         }
       }
       onProfileSelect?.(profile);
@@ -409,9 +417,11 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       if (isMobile && !isDrawerOpen) {
         console.log("📱 [DRAWER-EFFECT-OPEN] Opening drawer from effect");
         setIsDrawerOpen(true);
+        setIsSheetOpen(false); // Ensure sheet is closed on mobile
       } else if (!isMobile && !isSheetOpen) {
         console.log("📱 [SHEET-EFFECT-OPEN] Opening sheet from effect");
         setIsSheetOpen(true);
+        setIsDrawerOpen(false); // Ensure drawer is closed on desktop
       }
     } else if (!isManuallyClosing) {
       console.log(
@@ -500,6 +510,9 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
             isDrawerOpen,
             isSheetOpen,
             selectedProfile: selectedProfile?.name,
+            eventTarget: e.originalEvent?.target,
+            eventPhase: e.originalEvent?.eventPhase,
+            coordinates: e.lngLat,
           });
 
           // DESKTOP LOGIC: Close sheet on any empty map click
@@ -530,14 +543,19 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
               setIsManuallyClosing(false);
             }, 500);
           }
-          // MOBILE LOGIC: Close drawer on empty map click only if profile is selected
+          // MOBILE LOGIC: Close drawer on empty map click when drawer is open
           else if (
             isMobile &&
             (!features || features.length === 0) &&
-            selectedProfile
+            isDrawerOpen
           ) {
             console.log(
               "🗺️ [MOBILE-CLOSE] Closing mobile drawer on empty map click",
+              {
+                hasSelectedProfile: !!selectedProfile,
+                drawerState: isDrawerOpen,
+                featuresLength: features?.length,
+              },
             );
 
             // Record the time of manual close and set flag
@@ -564,6 +582,17 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
           } else {
             console.log(
               "🗺️ [MAP-IGNORE] Map click ignored - clicked on feature or conditions not met",
+              {
+                reason: isMobile
+                  ? !isDrawerOpen
+                    ? "drawer not open"
+                    : "clicked on feature or other condition"
+                  : "not mobile or clicked on feature",
+                isMobile,
+                isDrawerOpen,
+                hasFeatures: features && features.length > 0,
+                selectedProfile: selectedProfile?.name,
+              },
             );
           }
         }}
@@ -604,118 +633,143 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       </Sheet>
 
       {/* Mobile Drawer for Profile Details */}
-      <Drawer.Root
-        open={isDrawerOpen}
-        modal={false}
-        onOpenChange={(open) => {
-          console.log("📱 [DRAWER-CHANGE] onOpenChange called:", {
-            open,
-            currentDrawerOpen: isDrawerOpen,
-            isProfileSwitching,
-            selectedProfile: selectedProfile?.name,
-            isManuallyClosing,
-          });
+      {(() => {
+        const shouldShowDrawer = isMobile && isDrawerOpen;
+        console.log("📱 [DRAWER-RENDER] Drawer render check:", {
+          isMobile,
+          isDrawerOpen,
+          shouldShowDrawer,
+          selectedProfile: selectedProfile?.name,
+          activeSnapPoint,
+        });
+        return shouldShowDrawer;
+      })() && (
+        <Drawer.Root
+          open={true}
+          modal={false}
+          snapPoints={snapPoints}
+          activeSnapPoint={activeSnapPoint}
+          setActiveSnapPoint={(point) => {
+            console.log("📱 [SNAP-POINT] Snap point changed:", {
+              oldPoint: activeSnapPoint,
+              newPoint: point,
+              isDrawerOpen,
+              isMobile,
+            });
+            setActiveSnapPoint(point);
+          }}
+          onOpenChange={(open) => {
+            console.log("📱 [DRAWER-CHANGE] onOpenChange called:", {
+              open,
+              currentDrawerOpen: isDrawerOpen,
+              isProfileSwitching,
+              selectedProfile: selectedProfile?.name,
+              isManuallyClosing,
+            });
 
-          // Ignore automatic close events if we're manually closing or switching profiles
-          if (!open && (isManuallyClosing || isProfileSwitching)) {
-            console.log(
-              "📱 [DRAWER-IGNORE] Ignoring automatic close during manual close or profile switch",
-            );
-            return;
-          }
+            // Ignore automatic close events if we're manually closing or switching profiles
+            if (!open && (isManuallyClosing || isProfileSwitching)) {
+              console.log(
+                "📱 [DRAWER-IGNORE] Ignoring automatic close during manual close or profile switch",
+              );
+              return;
+            }
 
-          // Don't close the drawer if we're just switching profiles
-          if (!open && !isProfileSwitching) {
-            console.log("📱 [DRAWER-CLOSE] Closing drawer and clearing URL");
+            // Don't close the drawer if we're just switching profiles
+            if (!open && !isProfileSwitching) {
+              console.log("📱 [DRAWER-CLOSE] Closing drawer and clearing URL");
 
-            // Set manual closing flag to prevent race conditions
-            const closeTime = Date.now();
-            setLastManualCloseTime(closeTime);
-            setIsManuallyClosing(true);
+              // Set manual closing flag to prevent race conditions
+              const closeTime = Date.now();
+              setLastManualCloseTime(closeTime);
+              setIsManuallyClosing(true);
 
-            // Clear profile from URL when closing
-            const params = new URLSearchParams(searchParams.toString());
-            params.delete("profile");
-            router.push(`?${params.toString()}`, { scroll: false });
+              // Clear profile from URL when closing
+              const params = new URLSearchParams(searchParams.toString());
+              params.delete("profile");
+              router.push(`?${params.toString()}`, { scroll: false });
 
-            setIsDrawerOpen(false);
-            setSelectedProfile(null);
+              setIsDrawerOpen(false);
+              setSelectedProfile(null);
 
-            // Reset flag after delay
-            setTimeout(() => {
-              setIsManuallyClosing(false);
-            }, 2000);
-          } else if (open && !isDrawerOpen) {
-            console.log("📱 [DRAWER-REOPEN] Reopening drawer");
-            setIsDrawerOpen(true);
-          }
-        }}
-      >
-        <Drawer.Portal>
-          <Drawer.Overlay className="fixed inset-0 z-50" />
-          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex flex-col rounded-t-[10px] border-t bg-white">
-            <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-gray-300" />
-            <div className="flex-1 overflow-y-auto p-4">
-              {selectedProfile && (
-                <>
-                  <div className="mb-4 flex items-start justify-between">
-                    <Drawer.Title className="text-xl font-semibold">
-                      Profile Details
-                    </Drawer.Title>
-                    <button
-                      onClick={() => {
-                        console.log(
-                          "📱 [DRAWER-X-CLICK] X button clicked to close drawer",
-                        );
-
-                        // Set manual closing flag FIRST to prevent race conditions
-                        const closeTime = Date.now();
-                        setLastManualCloseTime(closeTime);
-                        setIsManuallyClosing(true);
-
-                        // Clear states immediately
-                        setIsDrawerOpen(false);
-                        setSelectedProfile(null);
-
-                        // Clear profile from URL when closing
-                        const params = new URLSearchParams(
-                          searchParams.toString(),
-                        );
-                        params.delete("profile");
-                        router.push(`?${params.toString()}`, { scroll: false });
-
-                        // Reset the flag after a longer delay to prevent URL restoration
-                        setTimeout(() => {
+              // Reset flag after delay
+              setTimeout(() => {
+                setIsManuallyClosing(false);
+              }, 2000);
+            } else if (open && !isDrawerOpen) {
+              console.log("📱 [DRAWER-REOPEN] Reopening drawer");
+              setIsDrawerOpen(true);
+            }
+          }}
+        >
+          <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <Drawer.Portal>
+            <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex h-full max-h-[97%] flex-col rounded-t-[10px] border-t bg-white">
+              <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-gray-300" />
+              <div className="flex-1 overflow-y-auto p-4">
+                {selectedProfile && (
+                  <>
+                    <div className="mb-4 flex items-start justify-between">
+                      <Drawer.Title className="text-xl font-semibold">
+                        Profile Details
+                      </Drawer.Title>
+                      <button
+                        onClick={() => {
                           console.log(
-                            "📱 [MANUAL-CLOSE-RESET] Resetting manual closing flag",
+                            "📱 [DRAWER-X-CLICK] X button clicked to close drawer",
                           );
-                          setIsManuallyClosing(false);
-                        }, 2000); // Increased timeout
-                      }}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      <svg
-                        className="h-6 w-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+
+                          // Set manual closing flag FIRST to prevent race conditions
+                          const closeTime = Date.now();
+                          setLastManualCloseTime(closeTime);
+                          setIsManuallyClosing(true);
+
+                          // Clear states immediately
+                          setIsDrawerOpen(false);
+                          setSelectedProfile(null);
+
+                          // Clear profile from URL when closing
+                          const params = new URLSearchParams(
+                            searchParams.toString(),
+                          );
+                          params.delete("profile");
+                          router.push(`?${params.toString()}`, {
+                            scroll: false,
+                          });
+
+                          // Reset the flag after a longer delay to prevent URL restoration
+                          setTimeout(() => {
+                            console.log(
+                              "📱 [MANUAL-CLOSE-RESET] Resetting manual closing flag",
+                            );
+                            setIsManuallyClosing(false);
+                          }, 2000); // Increased timeout
+                        }}
+                        className="text-gray-500 hover:text-gray-700"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                  <ProfileCard profile={selectedProfile} />
-                </>
-              )}
-            </div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+                        <svg
+                          className="h-6 w-6"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <ProfileCard profile={selectedProfile} />
+                  </>
+                )}
+              </div>
+            </Drawer.Content>
+          </Drawer.Portal>
+        </Drawer.Root>
+      )}
 
       {/* Auto-loading Status */}
       {(isLoading || !isLastPage) && mapProfiles.length > 0 && (
