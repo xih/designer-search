@@ -891,8 +891,8 @@ export default function ProfileSearchClient({
               <DebouncedSearchBox placeholder={placeholder} />
             </div>
 
-            {/* Desktop Controls Bar - Top Right */}
-            <div className="fixed right-4 top-4 z-40 hidden space-y-4 md:block">
+            {/* Desktop Controls Bar - Top Left */}
+            <div className="fixed left-4 top-4 z-40 hidden space-y-4 md:block">
               <div className="flex items-center gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
                 <Stats
                   classNames={{

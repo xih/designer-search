@@ -5,6 +5,14 @@ import { useInfiniteHits, useInstantSearch } from "react-instantsearch";
 import { Map, Marker } from "react-map-gl/mapbox";
 import { useAtom } from 'jotai';
 import { Drawer } from 'vaul';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetPortal,
+  SheetOverlay,
+} from "~/components/ui/sheet";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { ProfileCard } from "./ProfileCard";
 import { ProfileAvatar } from "./ProfileAvatar";
@@ -45,7 +53,10 @@ function ProfileAvatarOverlay({
         >
           <div
             className="cursor-pointer transition-transform hover:scale-110"
-            onClick={() => onProfileClick(profile)}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent map click event
+              onProfileClick(profile);
+            }}
           >
             <ProfileAvatar
               profile={profile}
@@ -115,7 +126,9 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   }, [hitsItems, profileData]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isProfileSwitching, setIsProfileSwitching] = useState(false);
 
   // Check if device is mobile
   useEffect(() => {
@@ -129,13 +142,26 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
 
   const handleProfileClick = useCallback(
     (profile: ProfileHitOptional) => {
-      setSelectedProfile(profile);
-      if (isMobile) {
-        setIsDrawerOpen(true);
+      // If sheet/drawer is already open, we're switching profiles
+      if ((isMobile && isDrawerOpen) || (!isMobile && isSheetOpen)) {
+        setIsProfileSwitching(true);
+        setSelectedProfile(profile);
+        // Reset the switching flag after a brief delay
+        setTimeout(() => {
+          setIsProfileSwitching(false);
+        }, 100);
+      } else {
+        // First time opening
+        setSelectedProfile(profile);
+        if (isMobile) {
+          setIsDrawerOpen(true);
+        } else {
+          setIsSheetOpen(true);
+        }
       }
       onProfileSelect?.(profile);
     },
-    [onProfileSelect, isMobile],
+    [onProfileSelect, isMobile, isDrawerOpen, isSheetOpen, isProfileSwitching, selectedProfile],
   );
 
   // Sync live search data to global state
@@ -189,6 +215,17 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       setIsLoading(false);
     }
   }, [isLastPage, hitsItems.length, isProfilesComplete, setIsProfilesComplete, setIsLoading]);
+
+  // Open sheet/drawer when profile is selected for the first time
+  useEffect(() => {
+    if (selectedProfile) {
+      if (isMobile && !isDrawerOpen) {
+        setIsDrawerOpen(true);
+      } else if (!isMobile && !isSheetOpen) {
+        setIsSheetOpen(true);
+      }
+    }
+  }, [selectedProfile, isMobile, isDrawerOpen, isSheetOpen]);
 
 
   if (status === "loading" && mapProfiles.length === 0) {
@@ -244,6 +281,15 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         style={{ width: "100vw", height: "100vh" }}
         mapStyle="mapbox://styles/mapbox/light-v11"
         mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ""}
+        onClick={(e) => {
+          // Only close sheet/drawer if clicking on empty map (not on markers)
+          const features = e.features;
+          if (!features || features.length === 0) {
+            setSelectedProfile(null);
+            setIsSheetOpen(false);
+            setIsDrawerOpen(false);
+          }
+        }}
       >
         {/* ProfileAvatar Markers */}
         <ProfileAvatarOverlay
@@ -252,38 +298,49 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         />
       </Map>
 
-      {/* Desktop Profile Card Sidebar */}
-      {selectedProfile && !isMobile && (
-        <div className="absolute right-4 top-4 z-50 max-h-[500px] w-80 overflow-y-auto">
-          <div className="rounded-lg border bg-white p-4 shadow-xl backdrop-blur-sm">
-            <div className="mb-3 flex items-start justify-between">
-              <h3 className="text-lg font-semibold">Profile Details</h3>
-              <button
-                onClick={() => setSelectedProfile(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+      {/* Desktop Sheet for Profile Details */}
+      <Sheet 
+        open={!isMobile && isSheetOpen} 
+        modal={false}
+        onOpenChange={(open) => {
+          // Only respond to manual close events from the X button
+          // Ignore automatic close events that happen during profile switching
+          if (open && !isSheetOpen) {
+            setIsSheetOpen(true);
+          }
+          // Note: We handle closing through our manual controls only
+        }}
+      >
+        <SheetPortal>
+          {/* Custom overlay with no opacity */}
+          <SheetOverlay className="bg-transparent backdrop-blur-none" />
+          <SheetContent 
+            side="right" 
+            className="w-[400px] sm:w-[540px]" 
+          >
+            <SheetHeader>
+              <SheetTitle>Profile Details</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6">
+              {selectedProfile && <ProfileCard profile={selectedProfile} />}
             </div>
-            <ProfileCard profile={selectedProfile} />
-          </div>
-        </div>
-      )}
+          </SheetContent>
+        </SheetPortal>
+      </Sheet>
 
       {/* Mobile Drawer for Profile Details */}
-      <Drawer.Root open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+      <Drawer.Root 
+        open={isDrawerOpen} 
+        onOpenChange={(open) => {
+          // Don't close the drawer if we're just switching profiles
+          if (!open && !isProfileSwitching) {
+            setIsDrawerOpen(false);
+            setSelectedProfile(null);
+          } else if (open && !isDrawerOpen) {
+            setIsDrawerOpen(true);
+          }
+        }}
+      >
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex h-[85%] flex-col rounded-t-[10px] bg-white">
