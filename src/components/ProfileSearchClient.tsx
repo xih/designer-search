@@ -18,17 +18,16 @@ import {
 } from "react-instantsearch";
 import { Masonry } from "masonic";
 import useMeasure from "react-use-measure";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchClient } from "~/lib/typesense";
 import { ProfileHitMasonry } from "./ProfileHitMasonry";
 import { FilterModal, FilterButton } from "./FilterModal";
-import { TypesenseDebugger } from "./TypesenseDebugger";
 import { ViewSwitcher, type ViewType } from "./ViewSwitcher";
 import { ProfileDataTable } from "./ProfileDataTable";
 import { ProfileMapView } from "./ProfileMapView";
 import type { ProfileHitOptional } from "~/types/typesense";
-import { Search } from "lucide-react";
+import { Search, Info } from "lucide-react";
 import { Input } from "~/components/ui/input";
 import {
   profileDataAtom,
@@ -36,6 +35,7 @@ import {
   profilesLoadingAtom,
   dynamicPageSizeAtom,
   initialLoadCompletedAtom,
+  storageStatsAtom,
 } from "~/lib/store";
 
 interface ProfileSearchProps {
@@ -660,6 +660,113 @@ function InfiniteMasonryHits() {
   );
 }
 
+// Debug Panel Component with all metadata
+function DebugPanel({ currentView }: { currentView: ViewType }) {
+  const { status } = useInstantSearch();
+  const { items } = useInfiniteHits<ProfileHitOptional>();
+  const [profileData] = useAtom(profileDataAtom);
+  const [isProfilesComplete] = useAtom(profilesCompleteAtom);
+  const [isLoading] = useAtom(profilesLoadingAtom);
+  const [dynamicPageSize] = useAtom(dynamicPageSizeAtom);
+  const [initialLoadCompleted] = useAtom(initialLoadCompletedAtom);
+  const storageStats = useAtomValue(storageStatsAtom);
+
+  const currentDataSource = items.length > 0 ? "Live" : "Cached";
+  const currentProfileCount =
+    items.length > 0 ? items.length : profileData.length;
+
+  return (
+    <div className="w-64 rounded-lg border bg-white/95 p-3 shadow-xl backdrop-blur-sm">
+      <div className="space-y-2 text-xs text-gray-600">
+        {/* Basic Stats */}
+        <div className="border-b border-gray-200 pb-2">
+          <Stats
+            classNames={{
+              root: "text-sm text-gray-800 font-medium whitespace-nowrap",
+            }}
+          />
+        </div>
+
+        {/* Data Source & Count */}
+        <div>
+          <div className="font-medium text-gray-800">
+            {currentDataSource}: {currentProfileCount.toLocaleString()} profiles
+          </div>
+          {currentView === "map" && (
+            <div>
+              With coordinates:{" "}
+              {profileData
+                .filter((p) => p.lat_lng_field)
+                .length.toLocaleString()}
+            </div>
+          )}
+        </div>
+
+        {/* Loading Status */}
+        <div className="space-y-1">
+          <div>
+            Status: <span className="font-medium">{status}</span>
+          </div>
+          <div>
+            Page size: <span className="font-medium">{dynamicPageSize}</span>
+          </div>
+          <div>
+            Initial load:{" "}
+            <span className="font-medium">
+              {initialLoadCompleted ? "✓ Complete" : "In progress..."}
+            </span>
+          </div>
+          {isLoading && (
+            <div className="font-medium text-blue-600">⏳ Loading more...</div>
+          )}
+          {isProfilesComplete && (
+            <div className="font-medium text-green-600">
+              ✓ All profiles loaded
+            </div>
+          )}
+        </div>
+
+        {/* Storage Stats */}
+        <div className="border-t border-gray-200 pt-2">
+          <div className="mb-1 font-medium text-gray-800">Cache Info:</div>
+          <div>Storage: {storageStats.currentSizeKB}KB</div>
+          <div>
+            Cached: {storageStats.profileCount.toLocaleString()}/
+            {storageStats.maxCachedProfiles.toLocaleString()}
+          </div>
+          <div>Efficiency: {storageStats.storageEfficiency}</div>
+          {storageStats.profileCount >= storageStats.maxCachedProfiles && (
+            <div className="font-medium text-orange-600">📦 Cache full</div>
+          )}
+        </div>
+
+        {/* Data Source Indicator */}
+        {profileData.length > 0 && items.length === 0 && (
+          <div className="rounded border border-purple-200 bg-purple-50 p-2">
+            <div className="text-xs font-medium text-purple-700">
+              💾 Using cached data
+            </div>
+          </div>
+        )}
+
+        {/* Connection Info */}
+        <div className="border-t border-gray-200 pt-2 text-xs">
+          <div>
+            Collection:{" "}
+            {process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME ?? "profiles"}
+          </div>
+          <div>
+            Host:{" "}
+            {process.env.NEXT_PUBLIC_TYPESENSE_HOST2 ??
+              process.env.NEXT_PUBLIC_TYPESENSE_HOST ??
+              "Not set"}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Component to handle dynamic page size configuration
 function DynamicConfigure() {
   const [dynamicPageSize, setDynamicPageSize] = useAtom(dynamicPageSizeAtom);
@@ -697,25 +804,26 @@ export default function ProfileSearchClient({
   className = "",
 }: ProfileSearchProps) {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
   // Determine current view from URL search params
   const getCurrentViewFromParams = useMemo((): ViewType => {
-    const view = searchParams.get('view');
+    const view = searchParams.get("view");
     if (view === "table") return "table";
     if (view === "map") return "map";
     return "masonry"; // Default view
   }, [searchParams]);
 
-  const [currentView, setCurrentView] = useState<ViewType>(getCurrentViewFromParams);
-
+  const [currentView, setCurrentView] = useState<ViewType>(
+    getCurrentViewFromParams,
+  );
 
   const collectionName =
     indexName ??
     process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME ??
     "profiles";
-
 
   // Update view when search params change
   useEffect(() => {
@@ -739,12 +847,12 @@ export default function ProfileSearchClient({
       // Update URL with search parameters
       const params = new URLSearchParams(searchParams.toString());
       if (newView === "masonry") {
-        params.delete('view'); // Default view doesn't need parameter
+        params.delete("view"); // Default view doesn't need parameter
       } else {
-        params.set('view', newView);
+        params.set("view", newView);
       }
-      
-      const newUrl = params.toString() ? `/?${params.toString()}` : '/';
+
+      const newUrl = params.toString() ? `/?${params.toString()}` : "/";
       router.push(newUrl, { scroll: false });
     },
     [router, currentView, searchParams],
@@ -778,18 +886,13 @@ export default function ProfileSearchClient({
         {currentView === "map" ? (
           /* Map View - Full screen with floating controls */
           <>
-            {/* Floating Debug Panel for Map */}
-            <div className="fixed bottom-4 left-4 z-50 max-w-sm">
-              <TypesenseDebugger />
-            </div>
-
             {/* Floating Search Header */}
             <div className="fixed left-1/2 top-4 z-40 w-96 max-w-[90vw] -translate-x-1/2 transform">
               <DebouncedSearchBox placeholder={placeholder} />
             </div>
 
-            {/* Floating Controls Bar */}
-            <div className="fixed right-4 top-4 z-40 space-y-4">
+            {/* Desktop Controls Bar - Top Right */}
+            <div className="fixed right-4 top-4 z-40 hidden space-y-4 md:block">
               <div className="flex items-center gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
                 <Stats
                   classNames={{
@@ -827,6 +930,63 @@ export default function ProfileSearchClient({
               </div>
             </div>
 
+            {/* Desktop Debug Toggle - Top Right */}
+            <div className="fixed right-4 top-16 z-40 hidden md:block">
+              <button
+                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
+                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
+                  isDebugPanelOpen
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+                aria-label="Toggle debug panel"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Desktop Debug Panel */}
+            {isDebugPanelOpen && (
+              <div className="fixed right-4 top-28 z-40 hidden md:block">
+                <DebugPanel currentView={currentView} />
+              </div>
+            )}
+
+            {/* Mobile Debug Toggle - Right Side - MANUAL TWEAK POSITION: Change bottom-20 value to adjust button height */}
+            <div className="fixed bottom-20 right-4 z-40 md:hidden">
+              <button
+                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
+                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
+                  isDebugPanelOpen
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+                aria-label="Toggle debug panel"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Mobile Controls Bar - Bottom */}
+            <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 transform md:hidden">
+              <div className="flex items-center gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
+                <ViewSwitcher
+                  currentView={currentView}
+                  onViewChange={handleViewChange}
+                />
+                {showFilters && (
+                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
+                )}
+              </div>
+            </div>
+
+            {/* Mobile Debug Panel - MANUAL TWEAK POSITION: Change bottom-32 value to adjust height above debug button */}
+            {isDebugPanelOpen && (
+              <div className="fixed bottom-36 right-4 z-40 md:hidden">
+                <DebugPanel currentView={currentView} />
+              </div>
+            )}
+
             <ProfileMapView />
           </>
         ) : (
@@ -837,16 +997,67 @@ export default function ProfileSearchClient({
               <DebouncedSearchBox placeholder={placeholder} />
             </div>
 
+            {/* Desktop Debug Toggle - Top Right */}
+            <div className="fixed right-4 top-20 z-40 hidden sm:block">
+              <button
+                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
+                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
+                  isDebugPanelOpen
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+                aria-label="Toggle debug panel"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Desktop Debug Panel for Grid/Table Views */}
+            {isDebugPanelOpen && (
+              <div className="fixed right-4 top-32 z-40 hidden sm:block">
+                <DebugPanel currentView={currentView} />
+              </div>
+            )}
+
+            {/* Mobile Debug Toggle - Right Side - MANUAL TWEAK POSITION: Change bottom-20 value to adjust button height */}
+            <div className="bottom-30 fixed right-4 z-40 sm:hidden">
+              <button
+                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
+                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
+                  isDebugPanelOpen
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+                aria-label="Toggle debug panel"
+              >
+                <Info className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Mobile Debug Panel for Grid/Table Views - MANUAL TWEAK POSITION: Change bottom-20 value to adjust height above filters */}
+            {isDebugPanelOpen && (
+              <div className="fixed bottom-20 right-4 z-40 sm:hidden">
+                <DebugPanel currentView={currentView} />
+              </div>
+            )}
+
             {/* Controls Bar */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              {/* Left side - Stats and Filter */}
-              <div className="flex items-center gap-4">
+              {/* Left side - Stats and Filter (Desktop only) */}
+              <div className="hidden items-center gap-4 sm:flex">
                 <Stats
                   classNames={{
                     root: "text-sm text-gray-600",
                   }}
                 />
 
+                {showFilters && (
+                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
+                )}
+              </div>
+
+              {/* Mobile - Only Filter Button */}
+              <div className="flex items-center gap-4 sm:hidden">
                 {showFilters && (
                   <FilterButton onClick={() => setIsFilterModalOpen(true)} />
                 )}

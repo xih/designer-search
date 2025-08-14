@@ -3,7 +3,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useInfiniteHits, useInstantSearch } from "react-instantsearch";
 import { Map, Marker } from "react-map-gl/mapbox";
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom } from 'jotai';
+import { Drawer } from 'vaul';
 import type { ProfileHitOptional } from "~/types/typesense";
 import { ProfileCard } from "./ProfileCard";
 import { ProfileAvatar } from "./ProfileAvatar";
@@ -12,9 +13,7 @@ import {
   profilesCompleteAtom, 
   profilesLoadingAtom,
   initialLoadCompletedAtom,
-  dynamicPageSizeAtom,
-  storageStatsAtom,
-  clearProfileCacheAtom
+  dynamicPageSizeAtom
 } from "~/lib/store";
 
 interface ProfileMapViewProps {
@@ -77,9 +76,6 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
   const [isLoading, setIsLoading] = useAtom(profilesLoadingAtom);
   const [initialLoadCompleted, setInitialLoadCompleted] = useAtom(initialLoadCompletedAtom);
   const [dynamicPageSize, setDynamicPageSize] = useAtom(dynamicPageSizeAtom);
-  const storageStats = useAtomValue(storageStatsAtom);
-  const clearCache = useSetAtom(clearProfileCacheAtom);
-  const [previousLength, setPreviousLength] = useState(0);
 
   // Process profiles with lat_lng_field coordinates
   const mapProfiles = useMemo(() => {
@@ -118,35 +114,37 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     return profilesWithCoords;
   }, [hitsItems, profileData]);
 
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const handleProfileClick = useCallback(
     (profile: ProfileHitOptional) => {
       setSelectedProfile(profile);
+      if (isMobile) {
+        setIsDrawerOpen(true);
+      }
       onProfileSelect?.(profile);
     },
-    [onProfileSelect],
+    [onProfileSelect, isMobile],
   );
 
-  // Sync live search data to global state with storage monitoring
+  // Sync live search data to global state
   useEffect(() => {
     if (hitsItems.length > 0) {
       setProfileData(hitsItems);
-      console.log('🔄 Updated global state with:', hitsItems.length, 'profiles');
-      console.log('📊 Storage stats:', {
-        size: `${storageStats.currentSizeKB}KB`,
-        profiles: storageStats.profileCount,
-        maxCached: storageStats.maxCachedProfiles
-      });
     }
-  }, [hitsItems, setProfileData, storageStats.currentSizeKB, storageStats.profileCount, storageStats.maxCachedProfiles]);
+  }, [hitsItems, setProfileData]);
 
-  // Debug logging for batch sizes
-  useEffect(() => {
-    if (hitsItems.length !== previousLength) {
-      const batchSize = hitsItems.length - previousLength;
-      console.log('📊 Batch loaded:', batchSize, 'Total:', hitsItems.length);
-      setPreviousLength(hitsItems.length);
-    }
-  }, [hitsItems.length, previousLength]);
 
   // Progressive auto-loading: Load initial 50, then continue with larger batches
   useEffect(() => {
@@ -159,21 +157,17 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
       
       // Switch to larger page size after first 50 profiles
       if (!initialLoadCompleted && hitsItems.length >= 50) {
-        console.log('✅ Initial 50 profiles loaded, switching to larger page size (500)');
         setDynamicPageSize(500);
         setInitialLoadCompleted(true);
         setIsLoading(false);
         // Continue loading with larger batches after a short delay
         setTimeout(() => {
           if (!isLastPage) {
-            console.log('🔄 Continuing with larger batches...');
             showMore();
           }
         }, 200);
         return;
       }
-      
-      console.log('🔄 Calling showMore(), current items:', hitsItems.length, 'page size:', dynamicPageSize);
       showMore();
       
       // Reset after a delay
@@ -193,7 +187,6 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
     if (isLastPage && hitsItems.length > 0 && !isProfilesComplete) {
       setIsProfilesComplete(true);
       setIsLoading(false);
-      console.log('✅ All profiles loaded and cached globally:', hitsItems.length);
     }
   }, [isLastPage, hitsItems.length, isProfilesComplete, setIsProfilesComplete, setIsLoading]);
 
@@ -259,8 +252,8 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         />
       </Map>
 
-      {/* Profile Card Sidebar */}
-      {selectedProfile && (
+      {/* Desktop Profile Card Sidebar */}
+      {selectedProfile && !isMobile && (
         <div className="absolute right-4 top-4 z-50 max-h-[500px] w-80 overflow-y-auto">
           <div className="rounded-lg border bg-white p-4 shadow-xl backdrop-blur-sm">
             <div className="mb-3 flex items-start justify-between">
@@ -289,6 +282,49 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         </div>
       )}
 
+      {/* Mobile Drawer for Profile Details */}
+      <Drawer.Root open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex h-[85%] flex-col rounded-t-[10px] bg-white">
+            <div className="mx-auto mt-4 h-2 w-[100px] rounded-full bg-gray-300" />
+            <div className="flex-1 overflow-y-auto p-4">
+              {selectedProfile && (
+                <>
+                  <div className="mb-4 flex items-start justify-between">
+                    <Drawer.Title className="text-xl font-semibold">
+                      Profile Details
+                    </Drawer.Title>
+                    <button
+                      onClick={() => {
+                        setIsDrawerOpen(false);
+                        setSelectedProfile(null);
+                      }}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <svg
+                        className="h-6 w-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                  <ProfileCard profile={selectedProfile} />
+                </>
+              )}
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+
       {/* Auto-loading Status */}
       {(isLoading || !isLastPage) && mapProfiles.length > 0 && (
         <div className="absolute bottom-4 left-1/2 z-40 -translate-x-1/2 transform">
@@ -301,39 +337,6 @@ export function ProfileMapView({ onProfileSelect }: ProfileMapViewProps) {
         </div>
       )}
 
-      {/* Map Stats */}
-      <div className="absolute left-4 top-4 z-40 rounded-lg bg-white/90 px-3 py-2 shadow-xl backdrop-blur-sm">
-        <div className="text-sm text-gray-600">
-          <div>
-            {hitsItems.length > 0 ? 'Live' : 'Cached'}: {hitsItems.length > 0 ? hitsItems.length.toLocaleString() : profileData.length.toLocaleString()} profiles
-          </div>
-          <div>With coordinates: {mapProfiles.length.toLocaleString()}</div>
-          
-          {/* Storage Stats */}
-          <div className="text-xs text-gray-500 mt-1">
-            Storage: {storageStats.currentSizeKB}KB
-            {storageStats.profileCount >= storageStats.maxCachedProfiles && (
-              <span className="text-blue-600 font-medium"> 📦 Cache full</span>
-            )}
-          </div>
-          
-          {profileData.length > 0 && hitsItems.length === 0 && (
-            <div className="mt-1 text-xs text-purple-600 font-medium">
-              💾 Using cached data
-            </div>
-          )}
-          {!isLastPage && hitsItems.length > 0 && (
-            <div className="mt-1 text-xs text-blue-600 font-medium">
-              Auto-loading... (Page size: {dynamicPageSize})
-            </div>
-          )}
-          {(isLastPage || isProfilesComplete) && (
-            <div className="mt-1 text-xs text-green-600 font-medium">
-              ✓ All profiles loaded
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
