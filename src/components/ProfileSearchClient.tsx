@@ -23,7 +23,6 @@ import { useAtom, useAtomValue } from "jotai";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchClient } from "~/lib/typesense";
 import { ProfileHitMasonry } from "./ProfileHitMasonry";
-import { FilterModal, FilterButton } from "./FilterModal";
 import { ViewSwitcher, type ViewType } from "./ViewSwitcher";
 import { ProfileDataTable } from "./ProfileDataTable";
 import { ProfileMapView } from "./ProfileMapView";
@@ -308,8 +307,11 @@ export function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
-        className="rounded-lg border-0 py-3 pl-10 pr-10 text-lg text-gray-900 focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
-        style={{ backgroundColor: "#F7F7F7", fontFamily: 'ABCDiatypePlusVariable, system-ui, sans-serif' }}
+        className="rounded-lg border-0 py-3 pl-10 pr-10 text-lg text-gray-900 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0"
+        style={{
+          backgroundColor: "#F7F7F7",
+          fontFamily: "ABCDiatypePlusVariable, system-ui, sans-serif",
+        }}
         autoComplete="off"
       />
       {inputValue && (
@@ -656,118 +658,11 @@ function InfiniteMasonryHits() {
 
       {(isLastPage || isProfilesComplete) && masonryItems.length > 0 && (
         <div className="mt-4 flex justify-center">
-          <div className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-600">
+          <div className="rounded-full bg-gray-50 px-3 py-1 text-xs font-light text-gray-400">
             ✓ All {masonryItems.length.toLocaleString()} profiles loaded
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// Debug Panel Component with all metadata
-function DebugPanel({ currentView }: { currentView: ViewType }) {
-  const { status } = useInstantSearch();
-  const { items } = useInfiniteHits<ProfileHitOptional>();
-  const [profileData] = useAtom(profileDataAtom);
-  const [isProfilesComplete] = useAtom(profilesCompleteAtom);
-  const [isLoading] = useAtom(profilesLoadingAtom);
-  const [dynamicPageSize] = useAtom(dynamicPageSizeAtom);
-  const [initialLoadCompleted] = useAtom(initialLoadCompletedAtom);
-  const storageStats = useAtomValue(storageStatsAtom);
-
-  const currentDataSource = items.length > 0 ? "Live" : "Cached";
-  const currentProfileCount =
-    items.length > 0 ? items.length : profileData.length;
-
-  return (
-    <div className="w-64 rounded-lg border bg-white/95 p-3 shadow-xl backdrop-blur-sm">
-      <div className="space-y-2 text-xs text-gray-600">
-        {/* Basic Stats */}
-        <div className="border-b border-gray-200 pb-2">
-          <Stats
-            classNames={{
-              root: "text-sm text-gray-800 font-medium whitespace-nowrap",
-            }}
-          />
-        </div>
-
-        {/* Data Source & Count */}
-        <div>
-          <div className="font-medium text-gray-800">
-            {currentDataSource}: {currentProfileCount.toLocaleString()} profiles
-          </div>
-          {currentView === "map" && (
-            <div>
-              With coordinates:{" "}
-              {profileData
-                .filter((p) => p.lat_lng_field)
-                .length.toLocaleString()}
-            </div>
-          )}
-        </div>
-
-        {/* Loading Status */}
-        <div className="space-y-1">
-          <div>
-            Status: <span className="font-medium">{status}</span>
-          </div>
-          <div>
-            Page size: <span className="font-medium">{dynamicPageSize}</span>
-          </div>
-          <div>
-            Initial load:{" "}
-            <span className="font-medium">
-              {initialLoadCompleted ? "✓ Complete" : "In progress..."}
-            </span>
-          </div>
-          {isLoading && (
-            <div className="font-medium text-blue-600">⏳ Loading more...</div>
-          )}
-          {isProfilesComplete && (
-            <div className="font-medium text-green-600">
-              ✓ All profiles loaded
-            </div>
-          )}
-        </div>
-
-        {/* Storage Stats */}
-        <div className="border-t border-gray-200 pt-2">
-          <div className="mb-1 font-medium text-gray-800">Cache Info:</div>
-          <div>Storage: {storageStats.currentSizeKB}KB</div>
-          <div>
-            Cached: {storageStats.profileCount.toLocaleString()}/
-            {storageStats.maxCachedProfiles.toLocaleString()}
-          </div>
-          <div>Efficiency: {storageStats.storageEfficiency}</div>
-          {storageStats.profileCount >= storageStats.maxCachedProfiles && (
-            <div className="font-medium text-orange-600">📦 Cache full</div>
-          )}
-        </div>
-
-        {/* Data Source Indicator */}
-        {profileData.length > 0 && items.length === 0 && (
-          <div className="rounded border border-purple-200 bg-purple-50 p-2">
-            <div className="text-xs font-medium text-purple-700">
-              💾 Using cached data
-            </div>
-          </div>
-        )}
-
-        {/* Connection Info */}
-        <div className="border-t border-gray-200 pt-2 text-xs">
-          <div>
-            Collection:{" "}
-            {process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME ?? "profiles"}
-          </div>
-          <div>
-            Host:{" "}
-            {process.env.NEXT_PUBLIC_TYPESENSE_HOST2 ??
-              process.env.NEXT_PUBLIC_TYPESENSE_HOST ??
-              "Not set"}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
@@ -872,9 +767,6 @@ export default function ProfileSearchClient({
           : `container mx-auto bg-white px-4 py-8 ${className}`
       }
     >
-      {/* Debug Panel - Remove this after fixing the issue */}
-      {/* {currentView !== "map" && <TypesenseDebugger />} */}
-
       <InstantSearch
         key={`search-${collectionName}`}
         indexName={collectionName}
@@ -890,7 +782,6 @@ export default function ProfileSearchClient({
         <DynamicConfigure />
 
         {currentView === "map" ? (
-          /* Map View - Full screen with floating controls */
           <>
             {/* Floating Search Header */}
             <div className="fixed left-1/2 top-4 z-40 w-96 max-w-[90vw] -translate-x-1/2 transform">
@@ -905,10 +796,6 @@ export default function ProfileSearchClient({
                     root: "text-sm text-gray-600",
                   }}
                 />
-                {/* TODO: Commenting out filters for v1 - will implement in future version */}
-                {/* {showFilters && (
-                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )} */}
               </div>
 
               <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
@@ -916,64 +803,8 @@ export default function ProfileSearchClient({
                   currentView={currentView}
                   onViewChange={handleViewChange}
                 />
-                {/* TODO: Commenting out sort dropdown for v1 - will implement in future version */}
-                {/* <SortBy
-                  items={[
-                    { label: "Most Recent", value: collectionName },
-                    {
-                      label: "Most Followers",
-                      value: `${collectionName}/sort/followers_count:desc`,
-                    },
-                    {
-                      label: "Oldest First",
-                      value: `${collectionName}/sort/profile_created_at:asc`,
-                    },
-                  ]}
-                  classNames={{
-                    root: "min-w-[180px]",
-                    select:
-                      "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
-                  }}
-                /> */}
               </div>
             </div>
-
-            {/* Desktop Debug Toggle - Top Right */}
-            <div className="fixed right-4 top-16 z-40 hidden md:block">
-              <button
-                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
-                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
-                  isDebugPanelOpen
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-                aria-label="Toggle debug panel"
-              >
-                <Info className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Desktop Debug Panel */}
-            {isDebugPanelOpen && (
-              <div className="fixed right-4 top-28 z-40 hidden md:block">
-                <DebugPanel currentView={currentView} />
-              </div>
-            )}
-
-            {/* Mobile Debug Toggle - Right Side - MANUAL TWEAK POSITION: Change bottom-20 value to adjust button height */}
-            {/* <div className="fixed bottom-20 right-4 z-40 md:hidden">
-              <button
-                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
-                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
-                  isDebugPanelOpen
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-                aria-label="Toggle debug panel"
-              >
-                <Info className="h-4 w-4" />
-              </button>
-            </div> */}
 
             {/* Mobile Controls Bar - Bottom */}
             <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 transform md:hidden">
@@ -982,20 +813,8 @@ export default function ProfileSearchClient({
                   currentView={currentView}
                   onViewChange={handleViewChange}
                 />
-                {/* TODO: Commenting out filters for v1 - will implement in future version */}
-                {/* {showFilters && (
-                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )} */}
               </div>
             </div>
-
-            {/* Mobile Debug Panel - MANUAL TWEAK POSITION: Change bottom-32 value to adjust height above debug button */}
-            {/* {isDebugPanelOpen && (
-              <div className="fixed bottom-36 right-4 z-40 md:hidden">
-                <DebugPanel currentView={currentView} />
-              </div>
-            )} */}
-
             <ProfileMapView />
           </>
         ) : (
@@ -1004,96 +823,17 @@ export default function ProfileSearchClient({
             {/* Sticky Search Header */}
             <StickySearchHeader placeholder={placeholder} statsRef={statsRef} />
 
-            {/* Desktop Debug Toggle - Top Right */}
-            <div className="fixed right-4 top-20 z-40 hidden sm:block">
-              <button
-                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
-                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
-                  isDebugPanelOpen
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-                aria-label="Toggle debug panel"
-              >
-                <Info className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Desktop Debug Panel for Grid/Table Views */}
-            {isDebugPanelOpen && (
-              <div className="fixed right-4 top-32 z-40 hidden sm:block">
-                <DebugPanel currentView={currentView} />
-              </div>
-            )}
-
-            {/* Mobile Debug Toggle - Right Side - MANUAL TWEAK POSITION: Change bottom-20 value to adjust button height */}
-            {/* <div className="bottom-30 fixed right-4 z-40 sm:hidden">
-              <button
-                onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
-                className={`rounded-full p-2 text-white shadow-lg transition-colors ${
-                  isDebugPanelOpen
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-                aria-label="Toggle debug panel"
-              >
-                <Info className="h-4 w-4" />
-              </button>
-            </div> */}
-
-            {/* Mobile Debug Panel for Grid/Table Views - MANUAL TWEAK POSITION: Change bottom-20 value to adjust height above filters */}
-            {/* {isDebugPanelOpen && (
-              <div className="fixed bottom-20 right-4 z-40 sm:hidden">
-                <DebugPanel currentView={currentView} />
-              </div>
-            )} */}
-
             {/* Controls Bar */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               {/* Left side - Stats and Filter (Now shows on both mobile and desktop) */}
               <div className="flex items-center gap-4" ref={statsRef}>
-                <SearchStats 
-                  style={{ fontFamily: 'ABCDiatypePlusVariable, system-ui, sans-serif' }}
+                <SearchStats
+                  style={{
+                    fontFamily: "ABCDiatypePlusVariable, system-ui, sans-serif",
+                  }}
                 />
-
-                {/* TODO: Commenting out filters for v1 - will implement in future version */}
-                {/* {showFilters && (
-                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )} */}
               </div>
-
-              {/* Right side - View Switcher */}
-              {/* TODO: Commenting out view switcher for now - will add back in v1 */}
-              {/* <div className="flex items-center gap-4">
-                <ViewSwitcher
-                  currentView={currentView}
-                  onViewChange={handleViewChange}
-                /> */}
-                {/* Hide sort dropdown on mobile - it will be in the filter modal */}
-                {/* <div className="hidden sm:block"> */}
-                  {/* TODO: Commenting out sort dropdown for v1 - will implement in future version */}
-                  {/* <SortBy
-                    items={[
-                      { label: "Most Recent", value: collectionName },
-                      {
-                        label: "Most Followers",
-                        value: `${collectionName}/sort/followers_count:desc`,
-                      },
-                      {
-                        label: "Oldest First",
-                        value: `${collectionName}/sort/profile_created_at:asc`,
-                      },
-                    ]}
-                    classNames={{
-                      root: "min-w-[180px]",
-                      select:
-                        "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
-                    }}
-                  /> */}
-                {/* </div> */}
-              {/* </div> */}
             </div>
-
 
             {/* Results */}
             <div className="mb-8">
@@ -1105,16 +845,6 @@ export default function ProfileSearchClient({
             </div>
           </>
         )}
-
-        {/* Filter Modal */}
-        {/* TODO: Commenting out filter modal for v1 - will implement in future version */}
-        {/* {showFilters && (
-          <FilterModal
-            open={isFilterModalOpen}
-            onOpenChange={setIsFilterModalOpen}
-            collectionName={collectionName}
-          />
-        )} */}
       </InstantSearch>
     </div>
   );
