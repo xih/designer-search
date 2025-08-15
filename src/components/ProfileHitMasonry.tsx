@@ -57,7 +57,10 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-all duration-200 hover:scale-[1.02] hover:shadow-lg md:p-4">
+    <div 
+      className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:p-4"
+      style={{ fontFamily: 'ABCDiatypePlusVariable, system-ui, sans-serif' }}
+    >
       {/* Profile Header with Ellipsis Menu */}
       <div className="mb-2 flex items-start justify-between md:mb-3">
         <div className="flex items-start space-x-2 md:space-x-3">
