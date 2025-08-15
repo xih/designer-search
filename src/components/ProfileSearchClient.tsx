@@ -899,9 +899,10 @@ export default function ProfileSearchClient({
                     root: "text-sm text-gray-600",
                   }}
                 />
-                {showFilters && (
+                {/* TODO: Commenting out filters for v1 - will implement in future version */}
+                {/* {showFilters && (
                   <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )}
+                )} */}
               </div>
 
               <div className="flex flex-col gap-2 rounded-lg bg-white/90 p-3 shadow-xl backdrop-blur-sm">
@@ -909,7 +910,8 @@ export default function ProfileSearchClient({
                   currentView={currentView}
                   onViewChange={handleViewChange}
                 />
-                <SortBy
+                {/* TODO: Commenting out sort dropdown for v1 - will implement in future version */}
+                {/* <SortBy
                   items={[
                     { label: "Most Recent", value: collectionName },
                     {
@@ -926,7 +928,7 @@ export default function ProfileSearchClient({
                     select:
                       "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
                   }}
-                />
+                /> */}
               </div>
             </div>
 
@@ -974,9 +976,10 @@ export default function ProfileSearchClient({
                   currentView={currentView}
                   onViewChange={handleViewChange}
                 />
-                {showFilters && (
+                {/* TODO: Commenting out filters for v1 - will implement in future version */}
+                {/* {showFilters && (
                   <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )}
+                )} */}
               </div>
             </div>
 
@@ -1051,16 +1054,18 @@ export default function ProfileSearchClient({
                   }}
                 />
 
-                {showFilters && (
+                {/* TODO: Commenting out filters for v1 - will implement in future version */}
+                {/* {showFilters && (
                   <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )}
+                )} */}
               </div>
 
               {/* Mobile - Only Filter Button */}
               <div className="flex items-center gap-4 sm:hidden">
-                {showFilters && (
+                {/* TODO: Commenting out filters for v1 - will implement in future version */}
+                {/* {showFilters && (
                   <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )}
+                )} */}
               </div>
 
               {/* Right side - View Switcher */}
@@ -1071,7 +1076,8 @@ export default function ProfileSearchClient({
                 />
                 {/* Hide sort dropdown on mobile - it will be in the filter modal */}
                 <div className="hidden sm:block">
-                  <SortBy
+                  {/* TODO: Commenting out sort dropdown for v1 - will implement in future version */}
+                  {/* <SortBy
                     items={[
                       { label: "Most Recent", value: collectionName },
                       {
@@ -1088,7 +1094,7 @@ export default function ProfileSearchClient({
                       select:
                         "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
                     }}
-                  />
+                  /> */}
                 </div>
               </div>
             </div>
@@ -1105,13 +1111,14 @@ export default function ProfileSearchClient({
         )}
 
         {/* Filter Modal */}
-        {showFilters && (
+        {/* TODO: Commenting out filter modal for v1 - will implement in future version */}
+        {/* {showFilters && (
           <FilterModal
             open={isFilterModalOpen}
             onOpenChange={setIsFilterModalOpen}
             collectionName={collectionName}
           />
-        )}
+        )} */}
       </InstantSearch>
     </div>
   );
