@@ -51,7 +51,7 @@ export default function RootLayout({
       <body>
         <PostHogProvider>
           {/* <VoiceRecorderProvider> Commented out to disable microphone access */}
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <TRPCReactProvider>
               {children}
               <Toaster position="bottom-right" />

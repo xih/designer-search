@@ -19,7 +19,7 @@ export default function HomePage() {
             className="mt-2 text-center text-xl text-gray-600 sm:text-2xl md:text-4xl"
             style={{ fontFamily: "Cardinal Photo, sans-serif" }}
           >
-            &quot;Find your favorite&quot; Designers in Milliseconds
+            Find your favorite designers in milliseconds
           </p>
         </div>
 
