@@ -3,7 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { useSearchBox } from "react-instantsearch";
 
-export function QuickFilterTabs() {
+interface QuickFilterTabsProps {
+  statsRef?: React.RefObject<HTMLDivElement>;
+}
+
+export function QuickFilterTabs({ statsRef }: QuickFilterTabsProps) {
   const { refine, query } = useSearchBox();
   const [activeFilter, setActiveFilter] = useState<string>("");
 
@@ -31,6 +35,18 @@ export function QuickFilterTabs() {
       refine(filterLower);
       setActiveFilter(filter);
     }
+
+    // Auto-scroll to stats element when filter is clicked
+    // This ensures the stats ("180 results found in 54ms") are visible
+    if (statsRef?.current && window.scrollY > 200) {
+      const statsPosition =
+        statsRef.current.getBoundingClientRect().top + window.pageYOffset;
+      // Scroll to stats position minus some offset for better visibility
+      window.scrollTo({
+        top: statsPosition - 150, // 100px offset from top
+        behavior: "smooth",
+      });
+    }
   };
 
   // Update active filter based on query
@@ -41,7 +57,7 @@ export function QuickFilterTabs() {
   }, [query]);
 
   return (
-    <div className="mb-8">
+    <div className="mb-4">
       <div className="overflow-x-auto">
         <div className="grid min-w-max grid-flow-col gap-10">
           {filters.map((filter) => (

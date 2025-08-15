@@ -18,6 +18,7 @@ import {
 } from "react-instantsearch";
 import { Masonry } from "masonic";
 import useMeasure from "react-use-measure";
+import { motion, useScroll, useTransform } from "framer-motion";
 import { useAtom, useAtomValue } from "jotai";
 import { useRouter, useSearchParams } from "next/navigation";
 import { searchClient } from "~/lib/typesense";
@@ -27,6 +28,7 @@ import { ViewSwitcher, type ViewType } from "./ViewSwitcher";
 import { ProfileDataTable } from "./ProfileDataTable";
 import { ProfileMapView } from "./ProfileMapView";
 import { QuickFilterTabs } from "./QuickFilterTabs";
+import { StickySearchHeader } from "./StickySearchHeader";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search, Info } from "lucide-react";
 import { Input } from "~/components/ui/input";
@@ -193,7 +195,7 @@ const SearchSuggestions = React.memo(function SearchSuggestions({
 });
 
 // Optimized search box component with autocomplete
-function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
+export function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
   const { query, refine } = useSearchBox();
   const [inputValue, setInputValue] = useState(query);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -305,7 +307,8 @@ function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
         onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
-        className="rounded-lg border bg-gray-100 py-3 pl-10 pr-10 text-lg text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+        className="rounded-lg border-0 py-3 pl-10 pr-10 text-lg text-gray-900 focus:border-0 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none"
+        style={{ backgroundColor: "#F7F7F7", fontFamily: 'ABCDiatypePlusVariable, system-ui, sans-serif' }}
         autoComplete="off"
       />
       {inputValue && (
@@ -808,6 +811,7 @@ export default function ProfileSearchClient({
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const statsRef = useRef<HTMLDivElement>(null);
 
   // Determine current view from URL search params
   const getCurrentViewFromParams = useMemo((): ViewType => {
@@ -996,10 +1000,8 @@ export default function ProfileSearchClient({
         ) : (
           /* Normal View - Container Layout */
           <>
-            {/* Search Header */}
-            <div className="mx-auto mb-8 max-w-2xl">
-              <DebouncedSearchBox placeholder={placeholder} />
-            </div>
+            {/* Sticky Search Header */}
+            <StickySearchHeader placeholder={placeholder} statsRef={statsRef} />
 
             {/* Desktop Debug Toggle - Top Right */}
             <div className="fixed right-4 top-20 z-40 hidden sm:block">
@@ -1048,7 +1050,7 @@ export default function ProfileSearchClient({
             {/* Controls Bar */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               {/* Left side - Stats and Filter (Desktop only) */}
-              <div className="hidden items-center gap-4 sm:flex">
+              <div className="hidden items-center gap-4 sm:flex" ref={statsRef}>
                 <Stats
                   classNames={{
                     root: "text-sm text-gray-600",
@@ -1100,8 +1102,6 @@ export default function ProfileSearchClient({
               </div>
             </div>
 
-            {/* Quick Filter Tabs */}
-            <QuickFilterTabs />
 
             {/* Results */}
             <div className="mb-8">
