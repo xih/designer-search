@@ -960,7 +960,7 @@ export default function ProfileSearchClient({
             )}
 
             {/* Mobile Debug Toggle - Right Side - MANUAL TWEAK POSITION: Change bottom-20 value to adjust button height */}
-            <div className="fixed bottom-20 right-4 z-40 md:hidden">
+            {/* <div className="fixed bottom-20 right-4 z-40 md:hidden">
               <button
                 onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
                 className={`rounded-full p-2 text-white shadow-lg transition-colors ${
@@ -972,7 +972,7 @@ export default function ProfileSearchClient({
               >
                 <Info className="h-4 w-4" />
               </button>
-            </div>
+            </div> */}
 
             {/* Mobile Controls Bar - Bottom */}
             <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 transform md:hidden">
@@ -989,11 +989,11 @@ export default function ProfileSearchClient({
             </div>
 
             {/* Mobile Debug Panel - MANUAL TWEAK POSITION: Change bottom-32 value to adjust height above debug button */}
-            {isDebugPanelOpen && (
+            {/* {isDebugPanelOpen && (
               <div className="fixed bottom-36 right-4 z-40 md:hidden">
                 <DebugPanel currentView={currentView} />
               </div>
-            )}
+            )} */}
 
             <ProfileMapView />
           </>
@@ -1026,7 +1026,7 @@ export default function ProfileSearchClient({
             )}
 
             {/* Mobile Debug Toggle - Right Side - MANUAL TWEAK POSITION: Change bottom-20 value to adjust button height */}
-            <div className="bottom-30 fixed right-4 z-40 sm:hidden">
+            {/* <div className="bottom-30 fixed right-4 z-40 sm:hidden">
               <button
                 onClick={() => setIsDebugPanelOpen(!isDebugPanelOpen)}
                 className={`rounded-full p-2 text-white shadow-lg transition-colors ${
@@ -1038,14 +1038,14 @@ export default function ProfileSearchClient({
               >
                 <Info className="h-4 w-4" />
               </button>
-            </div>
+            </div> */}
 
             {/* Mobile Debug Panel for Grid/Table Views - MANUAL TWEAK POSITION: Change bottom-20 value to adjust height above filters */}
-            {isDebugPanelOpen && (
+            {/* {isDebugPanelOpen && (
               <div className="fixed bottom-20 right-4 z-40 sm:hidden">
                 <DebugPanel currentView={currentView} />
               </div>
-            )}
+            )} */}
 
             {/* Controls Bar */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
