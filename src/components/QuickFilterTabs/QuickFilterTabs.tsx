@@ -43,19 +43,30 @@ export function QuickFilterTabs() {
   return (
     <div className="mb-8">
       <div className="overflow-x-auto">
-        <div className="flex min-w-max gap-8">
+        <div className="grid min-w-max grid-flow-col gap-10">
           {filters.map((filter) => (
             <button
               key={filter}
               onClick={() => handleFilterClick(filter)}
-              className={`whitespace-nowrap px-2 py-2 text-base font-medium transition-all duration-200 ${
+              className={`relative whitespace-nowrap px-2 py-2 text-base transition-all duration-100 ${
                 activeFilter === filter
                   ? "text-black"
-                  : "text-gray-400 hover:text-gray-600"
-              } `}
-              style={{ fontFamily: 'ABCDiatypePlusVariable, system-ui, sans-serif' }}
+                  : "text-gray-400 hover:text-gray-900"
+              }`}
+              style={{
+                fontFamily: "ABCDiatypePlusVariable, system-ui, sans-serif",
+              }}
             >
-              {filter}
+              <span className="invisible font-bold">{filter}</span>
+              <span
+                className={`absolute inset-0 flex items-center justify-center ${
+                  activeFilter === filter
+                    ? "font-bold"
+                    : "font-light hover:font-bold"
+                }`}
+              >
+                {filter}
+              </span>
             </button>
           ))}
         </div>
