@@ -29,6 +29,7 @@ import { ProfileDataTable } from "./ProfileDataTable";
 import { ProfileMapView } from "./ProfileMapView";
 import { QuickFilterTabs } from "./QuickFilterTabs";
 import { StickySearchHeader } from "./StickySearchHeader";
+import { SearchStats } from "./SearchStats";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search, Info } from "lucide-react";
 import { Input } from "~/components/ui/input";
@@ -1049,22 +1050,12 @@ export default function ProfileSearchClient({
 
             {/* Controls Bar */}
             <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              {/* Left side - Stats and Filter (Desktop only) */}
-              <div className="hidden items-center gap-4 sm:flex" ref={statsRef}>
-                <Stats
-                  classNames={{
-                    root: "text-sm text-gray-600",
-                  }}
+              {/* Left side - Stats and Filter (Now shows on both mobile and desktop) */}
+              <div className="flex items-center gap-4" ref={statsRef}>
+                <SearchStats 
+                  style={{ fontFamily: 'ABCDiatypePlusVariable, system-ui, sans-serif' }}
                 />
 
-                {/* TODO: Commenting out filters for v1 - will implement in future version */}
-                {/* {showFilters && (
-                  <FilterButton onClick={() => setIsFilterModalOpen(true)} />
-                )} */}
-              </div>
-
-              {/* Mobile - Only Filter Button */}
-              <div className="flex items-center gap-4 sm:hidden">
                 {/* TODO: Commenting out filters for v1 - will implement in future version */}
                 {/* {showFilters && (
                   <FilterButton onClick={() => setIsFilterModalOpen(true)} />
@@ -1072,13 +1063,14 @@ export default function ProfileSearchClient({
               </div>
 
               {/* Right side - View Switcher */}
-              <div className="flex items-center gap-4">
+              {/* TODO: Commenting out view switcher for now - will add back in v1 */}
+              {/* <div className="flex items-center gap-4">
                 <ViewSwitcher
                   currentView={currentView}
                   onViewChange={handleViewChange}
-                />
+                /> */}
                 {/* Hide sort dropdown on mobile - it will be in the filter modal */}
-                <div className="hidden sm:block">
+                {/* <div className="hidden sm:block"> */}
                   {/* TODO: Commenting out sort dropdown for v1 - will implement in future version */}
                   {/* <SortBy
                     items={[
@@ -1098,8 +1090,8 @@ export default function ProfileSearchClient({
                         "w-full rounded-full border-2 border-gray-200 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100",
                     }}
                   /> */}
-                </div>
-              </div>
+                {/* </div> */}
+              {/* </div> */}
             </div>
 
 

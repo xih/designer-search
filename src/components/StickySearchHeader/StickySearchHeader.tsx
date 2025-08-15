@@ -53,17 +53,14 @@ export function StickySearchHeader({ placeholder, statsRef }: StickySearchHeader
       //   ),
       // }}
     >
-      {/* Container that animates width - Full width on mobile, animated on desktop */}
-      <div className="w-full sm:hidden">
-        {/* Mobile: Always full width with padding */}
-        <div className="px-4">
-          {/* Search Box */}
-          <div className="pb-4 pt-4">
-            <DebouncedSearchBox placeholder={placeholder} />
-          </div>
+      {/* Mobile: Always full width with padding */}
+      <div className="block sm:hidden w-full px-4">
+        <div className="pb-4 pt-4">
+          <DebouncedSearchBox placeholder={placeholder} />
         </div>
       </div>
       
+      {/* Desktop: Animated width container */}
       <motion.div
         className="hidden sm:block mx-auto transition-all"
         style={{
@@ -72,7 +69,6 @@ export function StickySearchHeader({ placeholder, statsRef }: StickySearchHeader
           paddingRight: containerPadding,
         }}
       >
-        {/* Search Box */}
         <div className="pb-4 pt-4">
           <DebouncedSearchBox placeholder={placeholder} />
         </div>

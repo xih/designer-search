@@ -51,34 +51,36 @@ export function QuickFilterTabs({ statsRef }: QuickFilterTabsProps) {
 
   // Update active filter based on query
   useEffect(() => {
-    const queryLower = query.toLowerCase();
+    const queryLower = query.toLowerCase().trim();
     const matchingFilter = filters.find((f) => f.toLowerCase() === queryLower);
     setActiveFilter(matchingFilter ?? "");
-  }, [query]);
+  }, [query, filters]);
 
   return (
     <div className="mb-4">
       <div className="overflow-x-auto">
-        <div className="grid min-w-max grid-flow-col gap-10">
+        <div className="flex justify-start gap-4 sm:gap-4 lg:gap-10">
           {filters.map((filter) => (
             <button
               key={filter}
               onClick={() => handleFilterClick(filter)}
-              className={`relative whitespace-nowrap px-2 py-2 text-base transition-all duration-100 ${
+              className={`duration-50 relative whitespace-nowrap px-2 py-2 text-base transition-all ${
                 activeFilter === filter
                   ? "text-black"
-                  : "text-gray-400 hover:text-gray-900"
+                  : "text-gray-400 hover:text-gray-700"
               }`}
               style={{
                 fontFamily: "ABCDiatypePlusVariable, system-ui, sans-serif",
               }}
             >
+              {/* Invisible placeholder that reserves maximum width (bold) */}
               <span className="invisible font-bold">{filter}</span>
+              {/* Visible text overlay with proper font weight */}
               <span
-                className={`absolute inset-0 flex items-center justify-center ${
+                className={`absolute inset-0 flex items-center justify-center transition-all duration-100 ${
                   activeFilter === filter
                     ? "font-bold"
-                    : "font-light hover:font-bold"
+                    : "font-light hover:font-medium"
                 }`}
               >
                 {filter}
