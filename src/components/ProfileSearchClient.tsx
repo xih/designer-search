@@ -26,6 +26,7 @@ import { FilterModal, FilterButton } from "./FilterModal";
 import { ViewSwitcher, type ViewType } from "./ViewSwitcher";
 import { ProfileDataTable } from "./ProfileDataTable";
 import { ProfileMapView } from "./ProfileMapView";
+import { QuickFilterTabs } from "./QuickFilterTabs";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search, Info } from "lucide-react";
 import { Input } from "~/components/ui/input";
@@ -1098,6 +1099,9 @@ export default function ProfileSearchClient({
                 </div>
               </div>
             </div>
+
+            {/* Quick Filter Tabs */}
+            <QuickFilterTabs />
 
             {/* Results */}
             <div className="mb-8">
