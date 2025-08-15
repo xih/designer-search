@@ -124,7 +124,9 @@ if (typeof window !== 'undefined') {
   };
   
   // Run test after a small delay to ensure everything is initialized
-  setTimeout(testConnection, 1000);
+  setTimeout(() => {
+    void testConnection();
+  }, 1000);
 }
 
 export const searchClient = adapter.searchClient;

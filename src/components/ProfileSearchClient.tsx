@@ -383,11 +383,6 @@ function InfiniteMasonryHits() {
         query: results.query,
         page: results.page
       } : null,
-      error: error ? {
-        message: error.message,
-        name: error.name,
-        stack: error.stack?.slice(0, 200) + "..."
-      } : null,
       searchClient: typeof searchClient,
       timestamp: new Date().toISOString()
     });
@@ -402,14 +397,6 @@ function InfiniteMasonryHits() {
       })));
     }
     
-    if (status === 'error') {
-      console.error("❌ Search Error Details:", {
-        error,
-        searchClient,
-        indexName: process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME,
-        host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2 ?? process.env.NEXT_PUBLIC_TYPESENSE_HOST
-      });
-    }
   }, [status, hitsItems.length, isLastPage, results, error]);
 
   // Global state management with Jotai
@@ -644,7 +631,7 @@ function InfiniteMasonryHits() {
       profileDataLength: profileData.length,
       searchClient: typeof searchClient,
       indexName: process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME,
-      host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2 || process.env.NEXT_PUBLIC_TYPESENSE_HOST
+      host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2 ?? process.env.NEXT_PUBLIC_TYPESENSE_HOST
     });
     
     return (
@@ -702,7 +689,7 @@ function InfiniteMasonryHits() {
           Try adjusting your search or filters
         </div>
         <div className="mt-4 text-xs text-gray-400">
-          Status: {status} | Items: {hitsItems.length} | Results: {results?.nbHits || 'N/A'}
+          Status: {status} | Items: {hitsItems.length} | Results: {results?.nbHits ?? 'N/A'}
         </div>
       </div>
     );
@@ -818,7 +805,7 @@ function DynamicConfigure() {
 
 export default function ProfileSearchClient({
   indexName,
-  showFilters = true,
+  showFilters: _showFilters = true,
   placeholder = "Search profiles...",
   className = "",
 }: ProfileSearchProps) {
