@@ -57,9 +57,9 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
   };
 
   return (
-    <div 
+    <div
       className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:p-4"
-      style={{ fontFamily: 'ABCDiatypePlusVariable, system-ui, sans-serif' }}
+      style={{ fontFamily: "ABCDiatypePlusVariable, system-ui, sans-serif" }}
     >
       {/* Profile Header with Ellipsis Menu */}
       <div className="mb-2 flex items-start justify-between md:mb-3">
@@ -76,7 +76,9 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               {hit.name || "Unknown"}
             </h3>
             {hit.username && (
-              <p className="text-xs text-gray-500 md:text-sm">@{hit.username}</p>
+              <p className="text-xs text-gray-500 md:text-sm">
+                @{hit.username}
+              </p>
             )}
             {/* Location */}
             {hit.location && (
@@ -141,17 +143,17 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
         )}
 
         {/* About section */}
-        {hit.about && <p className="text-sm text-gray-700">{hit.about}</p>}
+        {hit.about && <p className="text-sm text-gray-400">{hit.about}</p>}
 
         {/* Skills */}
         {hit.skills && hit.skills.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700">Skills</h4>
+            <h4 className="text-sm font-medium text-gray-500">Skills</h4>
             <div className="mt-1 flex flex-wrap gap-1">
               {hit.skills.map((skill, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-700"
+                  className="rounded-full bg-gray-50 px-2 py-1 text-xs font-light text-gray-400"
                 >
                   {skill}
                 </span>
@@ -163,12 +165,12 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
         {/* Companies */}
         {hit.companies && hit.companies.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700">Companies</h4>
+            <h4 className="text-sm font-medium text-gray-500">Companies</h4>
             <div className="mt-1 flex flex-wrap gap-1">
               {hit.companies.map((company, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600"
+                  className="rounded-sm bg-gray-50 px-2 py-1 text-xs font-light text-gray-400"
                 >
                   {company}
                 </span>
@@ -244,7 +246,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               }
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded bg-gray-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-900"
+              className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-transparent stroke-gray-100 px-3 py-2 text-sm font-medium text-gray-500 outline-1 transition-colors hover:bg-gray-50"
             >
               Portfolio site
               <svg
