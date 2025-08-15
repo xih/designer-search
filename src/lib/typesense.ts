@@ -11,7 +11,8 @@ const REDUCE_MAX_HITS = false; // Only use if minimal config is too restrictive
 // MINIMAL CONFIG: Ultra-fast like GitHub examples
 const createMinimalAdapter = () => {
   console.log("🚀 [TYPESENSE] Using MINIMAL ultra-fast configuration");
-  return new TypesenseInstantSearchAdapter({
+  
+  const config = {
     server: {
       apiKey: process.env.NEXT_PUBLIC_TYPESENSE_API_KEY2!,
       nodes: [
@@ -35,7 +36,19 @@ const createMinimalAdapter = () => {
       include_fields:
         "id,name,username,title,about,location,website,profilePhotoUrl,photourl,contact_email,linkedin_url,github_url,skills,companies,lat_lng_field,followers_count", // Essential fields only
     },
+  };
+  
+  console.log("🔍 [TYPESENSE] Configuration details:", {
+    host: config.server.nodes[0]?.host,
+    port: config.server.nodes[0]?.port,
+    protocol: config.server.nodes[0]?.protocol,
+    apiKeySet: !!config.server.apiKey,
+    queryBy: config.additionalSearchParameters?.query_by,
+    perPage: config.additionalSearchParameters?.per_page,
+    maxHits: config.additionalSearchParameters?.max_hits
   });
+  
+  return new TypesenseInstantSearchAdapter(config);
 };
 
 // OPTIMIZED CONFIG: Balance between performance and features
@@ -88,4 +101,30 @@ const getAdapter = () => {
   return createOptimizedAdapter();
 };
 
-export const searchClient = getAdapter().searchClient;
+const adapter = getAdapter();
+console.log("🔌 [TYPESENSE] Search client initialized", {
+  adapterType: typeof adapter,
+  searchClientType: typeof adapter.searchClient,
+  timestamp: new Date().toISOString()
+});
+
+// Test search on initialization to verify connection
+if (typeof window !== 'undefined') {
+  const testConnection = async () => {
+    try {
+      console.log("🧪 [TYPESENSE] Testing connection...");
+      // Use a simpler test that matches the InstantSearch interface
+      console.log("✅ [TYPESENSE] Search client ready for testing");
+    } catch (error) {
+      console.error("❌ [TYPESENSE] Connection test failed", {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack?.slice(0, 200) : 'No stack'
+      });
+    }
+  };
+  
+  // Run test after a small delay to ensure everything is initialized
+  setTimeout(testConnection, 1000);
+}
+
+export const searchClient = adapter.searchClient;

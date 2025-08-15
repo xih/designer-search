@@ -32,6 +32,7 @@ import { SearchStats } from "./SearchStats";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Search, Info } from "lucide-react";
 import { Input } from "~/components/ui/input";
+import { ProfileSkeleton } from "~/components/ProfileSkeleton";
 import {
   profileDataAtom,
   profilesCompleteAtom,
@@ -355,6 +356,7 @@ export function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
   );
 }
 
+
 // Custom Infinite Masonry Hits component
 function InfiniteMasonryHits() {
   const {
@@ -362,11 +364,53 @@ function InfiniteMasonryHits() {
     isLastPage,
     showMore,
   } = useInfiniteHits<ProfileHitOptional>();
-  const { status } = useInstantSearch();
+  const { status, results, error } = useInstantSearch();
   const [ref, { width }] = useMeasure();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [masonryKey, setMasonryKey] = useState(0);
   const [masonryError, setMasonryError] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+
+  // Debug logging to understand the loading states and errors
+  useEffect(() => {
+    console.log("🔍 InfiniteMasonryHits Debug Info:", {
+      status,
+      hitsItemsLength: hitsItems.length,
+      isLastPage,
+      results: results ? {
+        nbHits: results.nbHits,
+        processingTimeMS: results.processingTimeMS,
+        query: results.query,
+        page: results.page
+      } : null,
+      error: error ? {
+        message: error.message,
+        name: error.name,
+        stack: error.stack?.slice(0, 200) + "..."
+      } : null,
+      searchClient: typeof searchClient,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Log first few items for debugging
+    if (hitsItems.length > 0) {
+      console.log("📦 First 3 items:", hitsItems.slice(0, 3).map(item => ({
+        id: item.id,
+        name: item.name,
+        hasId: !!item.id,
+        keys: Object.keys(item)
+      })));
+    }
+    
+    if (status === 'error') {
+      console.error("❌ Search Error Details:", {
+        error,
+        searchClient,
+        indexName: process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME,
+        host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2 ?? process.env.NEXT_PUBLIC_TYPESENSE_HOST
+      });
+    }
+  }, [status, hitsItems.length, isLastPage, results, error]);
 
   // Global state management with Jotai
   const [profileData, setProfileData] = useAtom(profileDataAtom);
@@ -379,6 +423,7 @@ function InfiniteMasonryHits() {
   useEffect(() => {
     if (hitsItems.length > 0 && hitsItems.length !== prevHitsLength.current) {
       setProfileData(hitsItems);
+      setHasInitiallyLoaded(true);
       prevHitsLength.current = hitsItems.length;
     }
   }, [hitsItems.length, setProfileData]);
@@ -559,42 +604,118 @@ function InfiniteMasonryHits() {
     }
   }, [shouldUseFallback, masonryError, width, handleMasonryError]);
 
-  // Handle initial loading state (only when no items exist)
-  if (
+  // Handle initial loading state - ENHANCED with better debugging and logic
+  const shouldShowSkeleton = (
     (status === "loading" || status === "stalled") &&
-    masonryItems.length === 0
-  ) {
+    masonryItems.length === 0 &&
+    profileData.length === 0 && // Also check cached data
+    !hasInitiallyLoaded // Prevent showing after initial load
+  );
+  
+  console.log("🔄 Loading state check:", {
+    status,
+    masonryItemsLength: masonryItems.length,
+    profileDataLength: profileData.length,
+    hitsItemsLength: hitsItems.length,
+    hasInitiallyLoaded,
+    shouldShowSkeleton,
+    timestamp: new Date().toISOString()
+  });
+  
+  if (shouldShowSkeleton) {
+    console.log("✨ Showing initial loading skeletons");
     return (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="animate-pulse">
-            <div className="h-80 rounded-xl bg-gray-200"></div>
-          </div>
+          <ProfileSkeleton key={`skeleton-${i}`} />
         ))}
       </div>
     );
   }
 
-  // Handle error state
+  // Handle error state - ENHANCED with debugging
   if (status === "error") {
+    console.error("🚨 Error state triggered:", {
+      error,
+      status,
+      results,
+      hitsItemsLength: hitsItems.length,
+      masonryItemsLength: masonryItems.length,
+      profileDataLength: profileData.length,
+      searchClient: typeof searchClient,
+      indexName: process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME,
+      host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2 || process.env.NEXT_PUBLIC_TYPESENSE_HOST
+    });
+    
     return (
       <div className="py-12 text-center">
         <div className="text-lg text-red-500">Error loading profiles</div>
         <div className="mt-2 text-sm text-gray-400">
           Please try refreshing the page
         </div>
+        {error && (
+          <div className="mt-4 text-xs text-gray-400 max-w-md mx-auto">
+            Error: {error.message}
+          </div>
+        )}
       </div>
     );
   }
 
-  // Handle no results
-  if (masonryItems.length === 0) {
+  // Handle no results - ENHANCED with debugging and better logic
+  if (masonryItems.length === 0 && hasInitiallyLoaded) {
+    console.warn("⚠️ No results state triggered:", {
+      status,
+      hitsItemsLength: hitsItems.length,
+      masonryItemsLength: masonryItems.length,
+      profileDataLength: profileData.length,
+      hasInitiallyLoaded,
+      results: results ? {
+        nbHits: results.nbHits,
+        query: results.query
+      } : null,
+      isLastPage,
+      globalLoading,
+      isProfilesComplete,
+      searchClientType: typeof searchClient,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Check if we should show cached data instead
+    if (profileData.length > 0 && status !== 'loading') {
+      console.log("🔄 Attempting to use cached data:", profileData.length, "profiles");
+      // Don't show "no results" if we have cached data that could be displayed
+      return (
+        <div className="py-12 text-center">
+          <div className="text-lg text-gray-500">Loading profiles...</div>
+          <div className="mt-2 text-sm text-gray-400">
+            Using cached data ({profileData.length} profiles)
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="py-12 text-center">
         <div className="text-lg text-gray-500">No profiles found</div>
         <div className="mt-2 text-sm text-gray-400">
           Try adjusting your search or filters
         </div>
+        <div className="mt-4 text-xs text-gray-400">
+          Status: {status} | Items: {hitsItems.length} | Results: {results?.nbHits || 'N/A'}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback for when component is still initializing and no clear state is determined
+  if (masonryItems.length === 0 && !hasInitiallyLoaded && status === "idle") {
+    console.log("⏳ Component initializing, showing skeleton fallback");
+    return (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <ProfileSkeleton key={`init-skeleton-${i}`} />
+        ))}
       </div>
     );
   }
@@ -616,9 +737,7 @@ function InfiniteMasonryHits() {
       {isLoadingMore && (
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={`loading-${i}`} className="animate-pulse">
-              <div className="h-80 rounded-xl bg-gray-200"></div>
-            </div>
+            <ProfileSkeleton key={`loading-${i}`} />
           ))}
         </div>
       )}
