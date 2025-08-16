@@ -58,11 +58,45 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
 
   return (
     <div
-      className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:p-4"
+      className="relative rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:p-4"
       style={{ fontFamily: "ABCDiatypePlusVariable, system-ui, sans-serif" }}
     >
-      {/* Profile Header with Ellipsis Menu */}
-      <div className="mb-2 flex items-start justify-between md:mb-3">
+      {/* Ellipsis Dropdown Menu - Absolutely positioned */}
+      <div
+        className="absolute right-3 top-3 z-10 md:right-4 md:top-4"
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-200 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-600">
+              <svg
+                className="h-4 w-4"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+              </svg>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleGoogleSearch}>
+              <svg
+                className="mr-2 h-4 w-4"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+              </svg>
+              Google Search
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Profile Header */}
+      <div className="mb-2 pr-10 md:mb-3">
         <div className="flex items-start space-x-2 md:space-x-3">
           <ProfileAvatar
             profile={hit}
@@ -70,57 +104,24 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
             zoom={avatarZoom}
             className="md:h-16 md:w-16"
           />
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             {/* Name and Username */}
-            <h3 className="text-sm font-semibold leading-tight text-gray-900 md:text-lg">
+            <h3 className="break-words text-sm font-semibold leading-tight text-gray-900 md:text-lg">
               {hit.name || "Unknown"}
             </h3>
             {hit.username && (
-              <p className="text-xs text-gray-500 md:text-sm">
+              <p className="break-words text-xs text-gray-500 md:text-sm">
                 @{hit.username}
               </p>
             )}
             {/* Location */}
             {hit.location && (
-              <p className="flex items-center gap-1 text-xs text-gray-600 md:text-sm">
+              <p className="flex items-center gap-1 break-words text-xs text-gray-600 md:text-sm">
                 <span>📍</span>
-                {hit.location}
+                <span className="break-words">{hit.location}</span>
               </p>
             )}
           </div>
-        </div>
-
-        {/* Ellipsis Dropdown Menu */}
-        <div
-          onMouseDown={(e) => e.stopPropagation()}
-          onMouseUp={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-200 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-600">
-                <svg
-                  className="h-4 w-4"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                </svg>
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleGoogleSearch}>
-                <svg
-                  className="mr-2 h-4 w-4"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                </svg>
-                Google Search
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
 
@@ -128,7 +129,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
       <div className="space-y-2 md:space-y-3">
         {/* Title */}
         {hit.title && (
-          <p className="line-clamp-2 text-xs font-medium text-gray-700 md:text-sm">
+          <p className="break-words text-xs font-medium leading-normal text-gray-700 md:text-sm">
             {hit.title}
           </p>
         )}
@@ -143,7 +144,9 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
         )}
 
         {/* About section */}
-        {hit.about && <p className="text-sm text-gray-400">{hit.about}</p>}
+        {hit.about && (
+          <p className="break-words text-sm leading-normal text-gray-400">{hit.about}</p>
+        )}
 
         {/* Skills */}
         {hit.skills && hit.skills.length > 0 && (
@@ -153,7 +156,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               {hit.skills.map((skill, index) => (
                 <span
                   key={index}
-                  className="rounded-full bg-gray-50 px-2 py-1 text-xs font-light text-gray-400"
+                  className="break-words rounded-full bg-gray-50 px-2 py-1 text-xs font-light text-gray-400"
                 >
                   {skill}
                 </span>
@@ -170,7 +173,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
               {hit.companies.map((company, index) => (
                 <span
                   key={index}
-                  className="rounded-sm bg-gray-50 px-2 py-1 text-xs font-light text-gray-400"
+                  className="break-words rounded-sm bg-gray-50 px-2 py-1 text-xs font-light text-gray-400"
                 >
                   {company}
                 </span>
