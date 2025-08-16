@@ -2,12 +2,14 @@
 
 import React from "react";
 import ProfileSearch from "~/components/ProfileSearch";
+import { Header } from "~/components/Header";
 
 export default function HomePage() {
   return (
     <div className="relative">
-      {/* Main content with higher z-index */}
-      <div className="relative z-10">
+      <Header />
+      {/* Main content */}
+      <div className="relative pt-20">
         <div className="my-16 px-4 md:my-36">
           <h1
             className="text-center text-8xl font-bold text-black sm:text-7xl md:text-8xl lg:text-9xl"
@@ -16,7 +18,7 @@ export default function HomePage() {
             ReadCV Search
           </h1>
           <p
-            className="mt-2 text-center text-xl text-gray-600 sm:text-2xl md:text-4xl"
+            className="mt-2 text-center text-xl font-light text-gray-300 sm:text-2xl md:text-4xl"
             style={{ fontFamily: "Cardinal Photo, sans-serif" }}
           >
             Find your favorite designers in milliseconds

@@ -356,7 +356,6 @@ export function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
   );
 }
 
-
 // Custom Infinite Masonry Hits component
 function InfiniteMasonryHits() {
   const {
@@ -377,26 +376,30 @@ function InfiniteMasonryHits() {
       status,
       hitsItemsLength: hitsItems.length,
       isLastPage,
-      results: results ? {
-        nbHits: results.nbHits,
-        processingTimeMS: results.processingTimeMS,
-        query: results.query,
-        page: results.page
-      } : null,
+      results: results
+        ? {
+            nbHits: results.nbHits,
+            processingTimeMS: results.processingTimeMS,
+            query: results.query,
+            page: results.page,
+          }
+        : null,
       searchClient: typeof searchClient,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     // Log first few items for debugging
     if (hitsItems.length > 0) {
-      console.log("📦 First 3 items:", hitsItems.slice(0, 3).map(item => ({
-        id: item.id,
-        name: item.name,
-        hasId: !!item.id,
-        keys: Object.keys(item)
-      })));
+      console.log(
+        "📦 First 3 items:",
+        hitsItems.slice(0, 3).map((item) => ({
+          id: item.id,
+          name: item.name,
+          hasId: !!item.id,
+          keys: Object.keys(item),
+        })),
+      );
     }
-    
   }, [status, hitsItems.length, isLastPage, results, error]);
 
   // Global state management with Jotai
@@ -592,13 +595,12 @@ function InfiniteMasonryHits() {
   }, [shouldUseFallback, masonryError, width, handleMasonryError]);
 
   // Handle initial loading state - ENHANCED with better debugging and logic
-  const shouldShowSkeleton = (
+  const shouldShowSkeleton =
     (status === "loading" || status === "stalled") &&
     masonryItems.length === 0 &&
     profileData.length === 0 && // Also check cached data
-    !hasInitiallyLoaded // Prevent showing after initial load
-  );
-  
+    !hasInitiallyLoaded; // Prevent showing after initial load
+
   console.log("🔄 Loading state check:", {
     status,
     masonryItemsLength: masonryItems.length,
@@ -606,9 +608,9 @@ function InfiniteMasonryHits() {
     hitsItemsLength: hitsItems.length,
     hasInitiallyLoaded,
     shouldShowSkeleton,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
-  
+
   if (shouldShowSkeleton) {
     console.log("✨ Showing initial loading skeletons");
     return (
@@ -631,9 +633,11 @@ function InfiniteMasonryHits() {
       profileDataLength: profileData.length,
       searchClient: typeof searchClient,
       indexName: process.env.NEXT_PUBLIC_TYPESENSE_COLLECTION_NAME,
-      host: process.env.NEXT_PUBLIC_TYPESENSE_HOST2 ?? process.env.NEXT_PUBLIC_TYPESENSE_HOST
+      host:
+        process.env.NEXT_PUBLIC_TYPESENSE_HOST2 ??
+        process.env.NEXT_PUBLIC_TYPESENSE_HOST,
     });
-    
+
     return (
       <div className="py-12 text-center">
         <div className="text-lg text-red-500">Error loading profiles</div>
@@ -641,7 +645,7 @@ function InfiniteMasonryHits() {
           Please try refreshing the page
         </div>
         {error && (
-          <div className="mt-4 text-xs text-gray-400 max-w-md mx-auto">
+          <div className="mx-auto mt-4 max-w-md text-xs text-gray-400">
             Error: {error.message}
           </div>
         )}
@@ -657,20 +661,26 @@ function InfiniteMasonryHits() {
       masonryItemsLength: masonryItems.length,
       profileDataLength: profileData.length,
       hasInitiallyLoaded,
-      results: results ? {
-        nbHits: results.nbHits,
-        query: results.query
-      } : null,
+      results: results
+        ? {
+            nbHits: results.nbHits,
+            query: results.query,
+          }
+        : null,
       isLastPage,
       globalLoading,
       isProfilesComplete,
       searchClientType: typeof searchClient,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     // Check if we should show cached data instead
-    if (profileData.length > 0 && status !== 'loading') {
-      console.log("🔄 Attempting to use cached data:", profileData.length, "profiles");
+    if (profileData.length > 0 && status !== "loading") {
+      console.log(
+        "🔄 Attempting to use cached data:",
+        profileData.length,
+        "profiles",
+      );
       // Don't show "no results" if we have cached data that could be displayed
       return (
         <div className="py-12 text-center">
@@ -681,7 +691,7 @@ function InfiniteMasonryHits() {
         </div>
       );
     }
-    
+
     return (
       <div className="py-12 text-center">
         <div className="text-lg text-gray-500">No profiles found</div>
@@ -689,7 +699,8 @@ function InfiniteMasonryHits() {
           Try adjusting your search or filters
         </div>
         <div className="mt-4 text-xs text-gray-400">
-          Status: {status} | Items: {hitsItems.length} | Results: {results?.nbHits ?? 'N/A'}
+          Status: {status} | Items: {hitsItems.length} | Results:{" "}
+          {results?.nbHits ?? "N/A"}
         </div>
       </div>
     );
