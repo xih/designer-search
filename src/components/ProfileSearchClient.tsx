@@ -1307,7 +1307,7 @@ export default function ProfileSearchClient({
                         if (isSpeaking || isTTSLoading) return;
 
                         // 🧪 DEBUGGING CHOICE: Test TTS vs Test WAV Encoder
-                        const debugMode = "tts"; // Change to "wav-test" to test just WAV encoding
+                        const debugMode: "tts" | "wav-test" = "tts"; // Change to "wav-test" to test just WAV encoding
 
                         if (debugMode === "wav-test") {
                           // Test WAV encoder with a simple sine wave
