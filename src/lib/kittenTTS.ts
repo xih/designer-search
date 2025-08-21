@@ -22,6 +22,7 @@ export class KittenTTSWeb {
   private vocab: Record<string, number> = {};
   private vocabArray: string[] = [];
   private isInitialized = false;
+  private lastUsedSampleRate = 24000;
 
   async init(): Promise<void> {
     if (this.isInitialized) {
@@ -39,13 +40,16 @@ export class KittenTTSWeb {
       // Load the ONNX model - FORCE WASM for debugging (WebGPU might be causing issues)
       const modelLoadStart = performance.now();
       console.log("🔧 [DEBUG] Forcing WASM execution to debug gibberish issue");
+      
+      // Fetch the model as a buffer first
+      const modelResponse = await fetch("/models/kitten_tts_nano_v0_1.onnx");
+      const modelBuffer = await modelResponse.arrayBuffer();
+      const modelUint8Array = new Uint8Array(modelBuffer);
+      
       this.session = await ort.InferenceSession.create(
-        "/models/kitten_tts_nano_v0_1.onnx",
+        modelUint8Array,
         {
-          executionProviders: [{
-            name: 'wasm',
-            simd: true
-          }],
+          executionProviders: ['wasm'],
         },
       );
       console.log("🎯 Using WASM execution provider (forced for debugging)");
@@ -147,9 +151,10 @@ export class KittenTTSWeb {
         .trim();
       console.log('🔤 [PHONEMIZER] Cleaned text:', `"${cleanedText}"`);
       
-      const phonemes = await phonemize(cleanedText, 'en-us');
+      const phonemesArray = await phonemize(cleanedText, 'en-us');
+      const phonemes = Array.isArray(phonemesArray) ? phonemesArray.join(' ') : phonemesArray;
       console.log('🔤 [PHONEMIZER] Generated phonemes:', `"${phonemes}"`);
-      console.log('🔤 [PHONEMIZER] Phonemes length:', String(phonemes.length));
+      console.log('🔤 [PHONEMIZER] Phonemes length:', phonemes.length.toString());
       return phonemes;
     } catch (error) {
       console.error('❌ [PHONEMIZER] Failed to generate phonemes:', error);
@@ -323,13 +328,17 @@ export class KittenTTSWeb {
       let audioData = audioOutput.data as Float32Array;
       
       // Check if WebGPU produced NaN values and fallback to WASM (like working demo)
-      if (audioData.length > 0 && isNaN(audioData[0])) {
+      if (audioData.length > 0 && audioData[0] !== undefined && isNaN(audioData[0])) {
         console.log("⚠️ WebGPU produced NaN values, falling back to WASM...");
         
         // Create WASM session if we don't have one
         if (!this.wasmSession) {
+          const fallbackModelResponse = await fetch("/models/kitten_tts_nano_v0_1.onnx");
+          const fallbackModelBuffer = await fallbackModelResponse.arrayBuffer();
+          const fallbackModelUint8Array = new Uint8Array(fallbackModelBuffer);
+          
           this.wasmSession = await ort.InferenceSession.create(
-            "/models/kitten_tts_nano_v0_1.onnx",
+            fallbackModelUint8Array,
             {
               executionProviders: ['wasm']
             }
@@ -339,7 +348,7 @@ export class KittenTTSWeb {
         // Retry inference with WASM
         outputs = await this.wasmSession.run(inputs);
         audioOutput = outputs.waveform;
-        audioData = audioOutput.data as Float32Array;
+        audioData = audioOutput?.data as Float32Array;
       }
       
       console.log("🎤 [SYNTHESIS STEP 3/4] Using waveform output");
@@ -353,13 +362,13 @@ export class KittenTTSWeb {
         });
       }
 
-      const pcm = audioOutput.data as Float32Array;
+      const pcm = audioOutput?.data as Float32Array;
       console.log("🎤 [SYNTHESIS STEP 3/4] Raw PCM length:", pcm.length);
       console.log(
         "🎤 [SYNTHESIS STEP 3/4] Audio tensor shape:",
-        audioOutput.dims,
+        audioOutput?.dims ?? [],
       );
-      console.log("🎤 [SYNTHESIS STEP 3/4] Audio data type:", audioOutput.type);
+      console.log("🎤 [SYNTHESIS STEP 3/4] Audio data type:", audioOutput?.type ?? 'unknown');
       console.log("🎤 [SYNTHESIS STEP 3/4] PCM sample range:", {
         min: Math.min(...Array.from(pcm).slice(0, 1000)),
         max: Math.max(...Array.from(pcm).slice(0, 1000)),
@@ -388,11 +397,12 @@ export class KittenTTSWeb {
       let hasNaN = false;
       let maxAmplitude = 0;
       for (let i = 0; i < audioData.length; i++) {
-        if (isNaN(audioData[i])) {
+        const value = audioData[i];
+        if (value === undefined || isNaN(value)) {
           audioData[i] = 0; // Replace NaN with silence
           hasNaN = true;
         } else {
-          maxAmplitude = Math.max(maxAmplitude, Math.abs(audioData[i]));
+          maxAmplitude = Math.max(maxAmplitude, Math.abs(value));
         }
       }
       
@@ -412,7 +422,7 @@ export class KittenTTSWeb {
         console.log("🔧 Normalizing audio with factor:", normalizationFactor.toFixed(2));
         
         for (let i = 0; i < finalAudioData.length; i++) {
-          finalAudioData[i] *= normalizationFactor;
+          finalAudioData[i] = (finalAudioData[i] ?? 0) * normalizationFactor;
         }
       }
 
@@ -443,7 +453,7 @@ export class KittenTTSWeb {
       });
 
       // Store the sample rate for use in WAV encoding
-      (this as KittenTTSWeb & { lastUsedSampleRate: number }).lastUsedSampleRate = sampleRate;
+      this.lastUsedSampleRate = sampleRate;
 
       return trimmedPcm;
     } catch (error) {
@@ -476,7 +486,7 @@ export class KittenTTSWeb {
       console.log("🔊 [SPEAK STEP 2/4] Encoding to WAV format...");
       const encodeStart = performance.now();
       // Use the actual sample rate determined during synthesis
-      const wavBlob = encodeWAV(pcm, (this as KittenTTSWeb & { lastUsedSampleRate?: number }).lastUsedSampleRate ?? 24000);
+      const wavBlob = encodeWAV(pcm, this.lastUsedSampleRate);
       const encodeTime = performance.now() - encodeStart;
       console.log(
         `✅ [SPEAK STEP 2/4] WAV encoded in ${encodeTime.toFixed(2)}ms`,

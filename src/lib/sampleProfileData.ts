@@ -3,7 +3,7 @@ import type { ProfileHitOptional } from "~/types/typesense";
 /**
  * Generate avatar URL from various sources
  */
-export function generateAvatarUrl(name: string, email?: string): string {
+export function generateAvatarUrl(name: string, _email?: string): string {
   // Use placeholder service with the person's initials
 
   // Use placeholder services

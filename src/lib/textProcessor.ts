@@ -37,8 +37,9 @@ export async function textToPhonemes(text: string): Promise<string> {
   console.log('📝 [PHONEMIZER] Converting text to phonemes:', `"${text}"`);
   
   try {
-    const phonemes = await phonemize(text, 'en-us');
-    console.log('📝 [PHONEMIZER] Generated phonemes:', `"${String(phonemes)}"`);
+    const phonemesArray = await phonemize(text, 'en-us');
+    const phonemes = Array.isArray(phonemesArray) ? phonemesArray.join(' ') : phonemesArray;
+    console.log('📝 [PHONEMIZER] Generated phonemes:', `"${phonemes}"`);
     return phonemes;
   } catch (error) {
     console.error('❌ [PHONEMIZER] Failed to generate phonemes:', error);

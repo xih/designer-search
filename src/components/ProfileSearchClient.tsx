@@ -1315,7 +1315,7 @@ export default function ProfileSearchClient({
                         ];
 
                         // Start with simple test - change index to test different complexity
-                        const testText = testTexts[0]; // 0=simple, 1=medium, 2=full
+                        const testText = testTexts[0]!; // 0=simple, 1=medium, 2=full
 
                         try {
                           setIsSpeaking(true);
