@@ -85,7 +85,7 @@ export default withSentryConfig(config, {
   project: "readcv-search",
   authToken: process.env.SENTRY_AUTH_TOKEN,
   sourcemaps: {
-    disable: true, // Enable source maps (default: false)
+    disable: false, // Enable source maps for Debug IDs
     assets: ["**/*.js", "**/*.js.map"], // Specify which files to upload
     ignore: ["**/node_modules/**"], // Files to exclude
     deleteSourcemapsAfterUpload: true, // Security: delete after upload
