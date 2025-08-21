@@ -14,9 +14,15 @@ import {
 interface ProfileHitMasonryProps {
   hit: ProfileHitOptional;
   index?: number;
+  isSelected?: boolean;
+  onSelect?: (profileId: string) => void;
 }
 
-export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
+export function ProfileHitMasonry({ 
+  hit, 
+  isSelected = false, 
+  onSelect 
+}: ProfileHitMasonryProps) {
   // Avatar zoom level - you can adjust this value to control cropping
   // 1.0 = normal, 1.1 = 110% (crops borders), 1.2 = 120% (more aggressive)
   const avatarZoom = AVATAR_ZOOM_PRESETS.CROP_BORDERS;
@@ -56,10 +62,21 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
     window.open(googleUrl, "_blank");
   };
 
+  const handleCardClick = () => {
+    if (onSelect && hit.id) {
+      onSelect(hit.id);
+    }
+  };
+
   return (
     <div
-      className="relative rounded-xl border border-gray-200 bg-white p-3 shadow-sm md:p-4"
+      className={`relative rounded-xl border p-3 shadow-sm transition-all duration-200 md:p-4 ${
+        isSelected 
+          ? "border-black bg-white cursor-pointer" 
+          : "border-gray-200 bg-white hover:bg-gray-50 cursor-pointer"
+      }`}
       style={{ fontFamily: "ABCDiatypePlusVariable, system-ui, sans-serif" }}
+      onClick={handleCardClick}
     >
       {/* Ellipsis Dropdown Menu - Absolutely positioned */}
       <div
@@ -71,11 +88,7 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-200 data-[state=open]:bg-gray-100 data-[state=open]:text-gray-600">
-              <svg
-                className="h-4 w-4"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
               </svg>
             </button>
@@ -145,7 +158,9 @@ export function ProfileHitMasonry({ hit }: ProfileHitMasonryProps) {
 
         {/* About section */}
         {hit.about && (
-          <p className="break-words text-sm leading-normal text-gray-400">{hit.about}</p>
+          <p className="break-words text-sm leading-normal text-gray-400">
+            {hit.about}
+          </p>
         )}
 
         {/* Skills */}
