@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import type { ProfileHitOptional } from "~/types/typesense";
 import { Skeleton } from "~/components/ui/skeleton";
 import { ProfileAvatar, AVATAR_ZOOM_PRESETS } from "./ProfileAvatar";
@@ -15,10 +15,10 @@ interface ProfileHitMasonryProps {
   hit: ProfileHitOptional;
   index?: number;
   isSelected?: boolean;
-  onSelect?: (profileId: string) => void;
+  onSelect?: (profileId: string | null) => void;
 }
 
-export function ProfileHitMasonry({ 
+export const ProfileHitMasonry = React.memo(function ProfileHitMasonry({ 
   hit, 
   isSelected = false, 
   onSelect 
@@ -26,6 +26,33 @@ export function ProfileHitMasonry({
   // Avatar zoom level - you can adjust this value to control cropping
   // 1.0 = normal, 1.1 = 110% (crops borders), 1.2 = 120% (more aggressive)
   const avatarZoom = AVATAR_ZOOM_PRESETS.CROP_BORDERS;
+  
+  // Debug logging for flickering investigation
+  const renderCount = useRef(0);
+  const prevIsSelected = useRef(isSelected);
+  const prevHitId = useRef(hit?.id);
+  
+  useEffect(() => {
+    renderCount.current += 1;
+    const hasSelectionChanged = prevIsSelected.current !== isSelected;
+    const hasHitChanged = prevHitId.current !== hit?.id;
+    
+    if (hasSelectionChanged || hasHitChanged || renderCount.current % 10 === 0) {
+      console.log(`🎴 ProfileHitMasonry [${hit?.name || 'Unknown'}] - Render #${renderCount.current}:`, {
+        profileId: hit?.id,
+        profileName: hit?.name,
+        isSelected,
+        hasSelectionChanged,
+        hasHitChanged,
+        prevSelected: prevIsSelected.current,
+        prevHitId: prevHitId.current,
+        timestamp: new Date().toISOString(),
+      });
+    }
+    
+    prevIsSelected.current = isSelected;
+    prevHitId.current = hit?.id;
+  });
 
   // Handle case where hit is undefined
   if (!hit) {
@@ -64,7 +91,8 @@ export function ProfileHitMasonry({
 
   const handleCardClick = () => {
     if (onSelect && hit.id) {
-      onSelect(hit.id);
+      // Toggle selection - if same card clicked, deselect it
+      onSelect(isSelected ? null : hit.id);
     }
   };
 
@@ -286,4 +314,14 @@ export function ProfileHitMasonry({
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo
+  return (
+    prevProps.hit.id === nextProps.hit.id &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.hit.name === nextProps.hit.name &&
+    prevProps.hit.photourl === nextProps.hit.photourl &&
+    prevProps.hit.profilePhotoUrl === nextProps.hit.profilePhotoUrl
+    // Don't compare onSelect function since it changes but doesn't affect rendering
+  );
+});

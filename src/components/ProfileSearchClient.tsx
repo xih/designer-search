@@ -513,13 +513,16 @@ function InfiniteMasonryHits({
         id: hit.id,
         hit: hit,
         index,
+        isSelected: selectedProfileId === hit.id, // Include selection state in data
       }));
 
-    // Force Masonic reset when data source changes OR array shrinks
+    // Only reset Masonic when data source changes OR array shrinks significantly
+    // Don't reset for selection changes or minor data updates
     const shouldReset =
       (previousDataSource !== null &&
         previousDataSource !== currentDataSource) ||
-      (filteredItems.length < previousArrayLength && previousArrayLength > 0);
+      (filteredItems.length < previousArrayLength && previousArrayLength > 0 && 
+       Math.abs(filteredItems.length - previousArrayLength) > 5); // Only reset for significant changes
 
     if (shouldReset) {
       setMasonryKey((prev) => prev + 1);
@@ -535,6 +538,7 @@ function InfiniteMasonryHits({
     profileData.length,
     previousDataSource,
     previousArrayLength,
+    selectedProfileId, // Add this so selection state is included in data
   ]);
 
   const renderMasonryItem = useCallback(
@@ -542,21 +546,18 @@ function InfiniteMasonryHits({
       data,
     }: {
       index: number;
-      data: { hit: ProfileHitOptional; index: number };
+      data: { hit: ProfileHitOptional; index: number; isSelected: boolean };
     }) => {
       return (
         <ProfileHitMasonry
           hit={data.hit}
           index={data.index}
-          isSelected={selectedProfileId === data.hit.id}
-          onSelect={(profileId) => {
-            // Toggle selection - if same card clicked, deselect it
-            onProfileSelect(selectedProfileId === profileId ? null : profileId);
-          }}
+          isSelected={data.isSelected} // Use selection state from data
+          onSelect={onProfileSelect}
         />
       );
     },
-    [selectedProfileId, onProfileSelect],
+    [onProfileSelect], // Remove selectedProfileId dependency
   );
 
   // Error handler for Masonry component
@@ -565,7 +566,7 @@ function InfiniteMasonryHits({
     setMasonryKey((prev) => prev + 1);
   }, []);
 
-  // Render fallback grid - MOVED BEFORE CONDITIONAL RETURNS
+  // Stable fallback grid renderer
   const renderFallbackGrid = useCallback(
     () => (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -574,22 +575,27 @@ function InfiniteMasonryHits({
             key={item.id}
             hit={item.hit}
             index={item.index}
-            isSelected={selectedProfileId === item.hit.id}
-            onSelect={(profileId) => {
-              onProfileSelect(
-                selectedProfileId === profileId ? null : profileId,
-              );
-            }}
+            isSelected={item.isSelected} // Use selection state from data
+            onSelect={onProfileSelect}
           />
         ))}
       </div>
     ),
-    [masonryItems, selectedProfileId, onProfileSelect],
+    [masonryItems, onProfileSelect], // Remove selectedProfileId dependency
   );
 
   // Determine which content to render - MOVED BEFORE CONDITIONAL RETURNS
   const shouldUseFallback = masonryError || width === 0;
   const masonryContent = useMemo(() => {
+    console.log(`🏗️ Masonry Content Re-computation:`, {
+      masonryKey,
+      itemCount: masonryItems.length,
+      shouldUseFallback,
+      width,
+      masonryError,
+      timestamp: new Date().toISOString(),
+    });
+    
     if (shouldUseFallback) {
       return renderFallbackGrid();
     }
@@ -618,6 +624,7 @@ function InfiniteMasonryHits({
     masonryItems,
     renderMasonryItem,
     width,
+    // Removed selectedProfileId - selection state is handled by individual cards
   ]);
 
   // Handle Masonry errors in an effect - MOVED BEFORE CONDITIONAL RETURNS
@@ -860,6 +867,11 @@ export default function ProfileSearchClient({
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
+
+  // Stable callback that doesn't get recreated on every render
+  const handleProfileSelect = useCallback((profileId: string | null) => {
+    setSelectedProfileId(profileId);
+  }, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const statsRef = useRef<HTMLDivElement>(null);
@@ -1000,7 +1012,7 @@ export default function ProfileSearchClient({
               {currentView === "masonry" ? (
                 <InfiniteMasonryHits
                   selectedProfileId={selectedProfileId}
-                  onProfileSelect={setSelectedProfileId}
+                  onProfileSelect={handleProfileSelect}
                 />
               ) : (
                 <ProfileDataTable />
@@ -1018,12 +1030,19 @@ export default function ProfileSearchClient({
                     filter: "blur(4px)",
                   }}
                   animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, y: 100, scale: 0.9, filter: "blur(4px)" }}
+                  exit={{
+                    opacity: 0,
+                    y: 100,
+                    scale: 0.8,
+                    filter: "blur(4px)",
+                  }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                   className="fixed bottom-8 left-1/2 flex -translate-x-1/2 gap-1 rounded-xl bg-gray-900 p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.08),0px_8px_8px_-8px_rgba(0,0,0,0.16)] will-change-transform"
                 >
                   <div className="flex w-full justify-between gap-1">
-                    <button className="flex w-12 flex-col items-center gap-[1px] rounded-lg bg-gray-800 pb-1 pt-[6px] text-[10px] font-medium text-gray-300 hover:bg-gray-700">
+                    <button 
+                      onClick={() => handleProfileSelect(null)}
+                      className="flex w-12 flex-col items-center gap-[1px] rounded-lg bg-gray-800 pb-1 pt-[6px] text-[10px] font-medium text-gray-300 hover:bg-gray-700">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-4 w-4 flex-shrink-0"

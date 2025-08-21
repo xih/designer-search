@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Avatar, AvatarImage, AvatarFallback } from "~/components/ui/avatar";
@@ -13,19 +13,37 @@ interface ProfileAvatarProps {
   className?: string;
 }
 
-export function ProfileAvatar({
+export const ProfileAvatar = React.memo(function ProfileAvatar({
   profile,
   size = 80,
   zoom = 1.1, // Default 110% zoom to crop out black borders
   className = "",
 }: ProfileAvatarProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
-
+  
+  // Debug logging for image flickering investigation
+  const renderCount = useRef(0);
+  const prevImageUrl = useRef<string | undefined>();
+  const mountTime = useRef(Date.now());
+  
   const handleImageLoad = () => {
+    console.log(`🖼️ ProfileAvatar [${profile.name}] - Image LOADED:`, {
+      profileId: profile.id,
+      profileName: profile.name,
+      imageUrl: imageUrl,
+      loadTime: Date.now() - mountTime.current,
+      renderCount: renderCount.current,
+    });
     setImageLoaded(true);
   };
 
   const handleImageError = () => {
+    console.log(`❌ ProfileAvatar [${profile.name}] - Image ERROR:`, {
+      profileId: profile.id,
+      profileName: profile.name,
+      imageUrl: imageUrl,
+      renderCount: renderCount.current,
+    });
     setImageLoaded(true); // Consider error as "loaded" to hide skeleton
   };
 
@@ -41,6 +59,31 @@ export function ProfileAvatar({
 
   // Calculate zoom transform
   const zoomTransform = zoom !== 1 ? `scale(${zoom})` : undefined;
+  
+  useEffect(() => {
+    renderCount.current += 1;
+    const hasImageUrlChanged = prevImageUrl.current !== imageUrl;
+    
+    if (hasImageUrlChanged) {
+      console.log(`🔄 ProfileAvatar [${profile.name}] - Component re-render #${renderCount.current}:`, {
+        profileId: profile.id,
+        profileName: profile.name,
+        newImageUrl: imageUrl,
+        prevImageUrl: prevImageUrl.current,
+        hasImageUrlChanged,
+        imageLoaded,
+        componentAge: Date.now() - mountTime.current,
+      });
+      
+      // Reset image loaded state if URL changed
+      if (hasImageUrlChanged) {
+        setImageLoaded(false);
+        mountTime.current = Date.now();
+      }
+    }
+    
+    prevImageUrl.current = imageUrl;
+  });
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
@@ -78,7 +121,18 @@ export function ProfileAvatar({
       </Avatar>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function for React.memo - only re-render if props actually change
+  return (
+    prevProps.profile.id === nextProps.profile.id &&
+    prevProps.profile.name === nextProps.profile.name &&
+    prevProps.profile.photourl === nextProps.profile.photourl &&
+    prevProps.profile.profilePhotoUrl === nextProps.profile.profilePhotoUrl &&
+    prevProps.size === nextProps.size &&
+    prevProps.zoom === nextProps.zoom &&
+    prevProps.className === nextProps.className
+  );
+});
 
 // Export default zoom levels for consistency
 export const AVATAR_ZOOM_PRESETS = {
