@@ -7,6 +7,9 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // Enable source maps for better debugging
+  productionBrowserSourceMaps: true,
+  
   // Enable WASM loading for ONNX Runtime
   serverExternalPackages: ["onnxruntime-web"],
   webpack: (config, { isServer }) => {
@@ -86,13 +89,16 @@ export default withSentryConfig(config, {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   sourcemaps: {
     disable: false, // Enable source maps for Debug IDs
-    assets: ["**/*.js", "**/*.js.map"], // Specify which files to upload
-    ignore: ["**/node_modules/**"], // Files to exclude
+    assets: [".next/static/chunks/**/*.js", ".next/static/chunks/**/*.js.map"], // Upload all chunks
+    ignore: [], // Don't ignore anything to capture all chunks
     deleteSourcemapsAfterUpload: true, // Security: delete after upload
   },
 
   // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
+  
+  // Enable debug logging to see what's being uploaded
+  debug: true,
 
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
