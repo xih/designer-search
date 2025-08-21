@@ -6,6 +6,19 @@ import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
+  // Enable WASM loading for ONNX Runtime
+  serverExternalPackages: ['onnxruntime-web'],
+  webpack: (config, { isServer }) => {
+    // Enable WASM loading for client-side
+    if (!isServer) {
+      config.experiments = {
+        ...config.experiments,
+        asyncWebAssembly: true,
+      };
+      config.output.webassemblyModuleFilename = 'static/wasm/[modulehash].wasm';
+    }
+    return config;
+  },
   images: {
     // Allow external images from common profile photo sources
     remotePatterns: [

@@ -42,6 +42,9 @@ import {
   storageStatsAtom,
 } from "~/lib/store";
 import { AnimatePresence } from "motion/react";
+import { getKittenTTS } from "~/lib/kittenTTS";
+import { generateProfileSpeech } from "~/lib/profileSpeech";
+import { TTSDebugPanel, useTTSDebug } from "./TTSDebugPanel";
 
 interface ProfileSearchProps {
   indexName?: string;
@@ -361,9 +364,11 @@ export function DebouncedSearchBox({ placeholder }: { placeholder: string }) {
 function InfiniteMasonryHits({
   selectedProfileId,
   onProfileSelect,
+  onChatWithProfile,
 }: {
   selectedProfileId: string | null;
   onProfileSelect: (profileId: string | null) => void;
+  onChatWithProfile: (profileId: string) => void;
 }) {
   const {
     items: hitsItems,
@@ -422,6 +427,13 @@ function InfiniteMasonryHits({
       selectedProfileId,
     );
   }, [selectedProfileId]);
+
+  // Handle chat with profile from within this component where masonryItems is available
+  const handleChatClick = useCallback(() => {
+    if (selectedProfileId) {
+      onChatWithProfile(selectedProfileId);
+    }
+  }, [selectedProfileId, onChatWithProfile]);
 
   // Sync live search data to global state (optimized to prevent excessive updates)
   const prevHitsLength = useRef(0);
@@ -521,8 +533,9 @@ function InfiniteMasonryHits({
     const shouldReset =
       (previousDataSource !== null &&
         previousDataSource !== currentDataSource) ||
-      (filteredItems.length < previousArrayLength && previousArrayLength > 0 && 
-       Math.abs(filteredItems.length - previousArrayLength) > 5); // Only reset for significant changes
+      (filteredItems.length < previousArrayLength &&
+        previousArrayLength > 0 &&
+        Math.abs(filteredItems.length - previousArrayLength) > 5); // Only reset for significant changes
 
     if (shouldReset) {
       setMasonryKey((prev) => prev + 1);
@@ -595,7 +608,7 @@ function InfiniteMasonryHits({
       masonryError,
       timestamp: new Date().toISOString(),
     });
-    
+
     if (shouldUseFallback) {
       return renderFallbackGrid();
     }
@@ -863,7 +876,6 @@ export default function ProfileSearchClient({
   className = "",
 }: ProfileSearchProps) {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(
     null,
   );
@@ -872,6 +884,183 @@ export default function ProfileSearchClient({
   const handleProfileSelect = useCallback((profileId: string | null) => {
     setSelectedProfileId(profileId);
   }, []);
+
+  // TTS state
+  const [isTTSLoading, setIsTTSLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsError, setTtsError] = useState<string | null>(null);
+
+  // Debug panel state
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
+  const {
+    steps,
+    startCapturing,
+    stopCapturing,
+    addStep,
+    updateStep,
+    clearSteps,
+  } = useTTSDebug();
+
+  // Initialize TTS on component mount
+  useEffect(() => {
+    const initTTS = async () => {
+      try {
+        const tts = getKittenTTS();
+        console.log("🔍 Checking TTS readiness:", tts.isReady());
+
+        if (!tts.isReady()) {
+          console.log("🚀 Initializing TTS...");
+          setIsTTSLoading(true);
+          await tts.init();
+          setIsTTSLoading(false);
+          console.log("✅ TTS initialized successfully");
+        } else {
+          console.log("✅ TTS already ready");
+          setIsTTSLoading(false);
+        }
+      } catch (error) {
+        console.error("❌ TTS initialization failed:", error);
+        setTtsError(
+          `Failed to initialize text-to-speech: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        setIsTTSLoading(false);
+      }
+    };
+
+    void initTTS();
+  }, []);
+
+  // Access global profile data
+  const currentProfileData = useAtomValue(profileDataAtom);
+
+  // Handle chat/speak functionality with debug integration
+  const handleChatWithProfile = useCallback(
+    async (profileId: string) => {
+      if (isSpeaking) return;
+
+      const selectedProfile = currentProfileData.find(
+        (profile) => profile.id === profileId,
+      );
+
+      if (!selectedProfile) {
+        console.error("Selected profile not found in global data");
+        return;
+      }
+
+      // Start debug capturing
+      startCapturing();
+
+      // Add initial debug step
+      const initStepId = addStep({
+        name: "Initialize TTS Process",
+        status: "in_progress",
+        details: [
+          `Profile: ${selectedProfile.name}`,
+          `Profile ID: ${profileId}`,
+        ],
+      });
+
+      try {
+        setIsSpeaking(true);
+        setTtsError(null);
+
+        const tts = getKittenTTS();
+        if (!tts.isReady()) {
+          updateStep(initStepId, {
+            status: "error",
+            error: "TTS not initialized",
+          });
+          throw new Error("TTS not initialized");
+        }
+
+        updateStep(initStepId, { status: "completed" });
+
+        // Generate speech text step
+        const speechStepId = addStep({
+          name: "Generate Speech Text",
+          status: "in_progress",
+        });
+
+        const speechText = generateProfileSpeech(selectedProfile);
+        console.log(
+          "🎤 Speaking profile:",
+          selectedProfile.name,
+          "-",
+          speechText,
+        );
+
+        updateStep(speechStepId, {
+          status: "completed",
+          details: [
+            `Generated text: "${speechText.substring(0, 100)}${speechText.length > 100 ? "..." : ""}"`,
+            `Text length: ${speechText.length} characters`,
+          ],
+        });
+
+        // Speech synthesis step
+        const synthStepId = addStep({
+          name: "Speech Synthesis",
+          status: "in_progress",
+          details: [
+            "Voice: expr-voice-5-m",
+            "Speed: 1.0",
+            `Text: "${speechText.substring(0, 50)}..."`,
+          ],
+        });
+
+        // Speak the profile
+        await tts.speak(speechText, "expr-voice-5-m", 1.0);
+
+        updateStep(synthStepId, {
+          status: "completed",
+          details: [
+            "Voice: expr-voice-5-m",
+            "Speed: 1.0",
+            "Audio synthesis completed",
+            "Playback completed successfully",
+          ],
+        });
+
+        // Add completion step
+        addStep({
+          name: "TTS Process Complete",
+          status: "completed",
+          details: [
+            `Successfully spoke profile: ${selectedProfile.name}`,
+            `Total process completed`,
+          ],
+        });
+      } catch (error) {
+        console.error("❌ TTS error:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Speech failed";
+        setTtsError(errorMessage);
+
+        // Add error step
+        addStep({
+          name: "TTS Process Failed",
+          status: "error",
+          error: errorMessage,
+          details: [
+            `Error occurred during TTS process`,
+            `Profile: ${selectedProfile.name}`,
+          ],
+        });
+      } finally {
+        setIsSpeaking(false);
+        // Stop capturing after a delay to allow final steps to be added
+        setTimeout(() => stopCapturing(), 1000);
+      }
+    },
+    [
+      isSpeaking,
+      currentProfileData,
+      startCapturing,
+      stopCapturing,
+      addStep,
+      updateStep,
+    ],
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
   const statsRef = useRef<HTMLDivElement>(null);
@@ -1013,6 +1202,7 @@ export default function ProfileSearchClient({
                 <InfiniteMasonryHits
                   selectedProfileId={selectedProfileId}
                   onProfileSelect={handleProfileSelect}
+                  onChatWithProfile={handleChatWithProfile}
                 />
               ) : (
                 <ProfileDataTable />
@@ -1040,9 +1230,10 @@ export default function ProfileSearchClient({
                   className="fixed bottom-8 left-1/2 flex -translate-x-1/2 gap-1 rounded-xl bg-gray-900 p-1 shadow-[0_0_0_1px_rgba(0,0,0,0.08),0px_8px_8px_-8px_rgba(0,0,0,0.16)] will-change-transform"
                 >
                   <div className="flex w-full justify-between gap-1">
-                    <button 
+                    <button
                       onClick={() => handleProfileSelect(null)}
-                      className="flex w-12 flex-col items-center gap-[1px] rounded-lg bg-gray-800 pb-1 pt-[6px] text-[10px] font-medium text-gray-300 hover:bg-gray-700">
+                      className="flex w-12 flex-col items-center gap-[1px] rounded-lg bg-gray-800 pb-1 pt-[6px] text-[10px] font-medium text-gray-300 hover:bg-gray-700"
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-4 w-4 flex-shrink-0"
@@ -1058,23 +1249,163 @@ export default function ProfileSearchClient({
                       </svg>
                       Back
                     </button>
-                    <button className="flex w-12 flex-col items-center gap-[1px] rounded-lg bg-gray-800 pb-1 pt-[6px] text-[10px] font-medium text-gray-300 hover:bg-red-900 hover:text-red-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        className="h-4 w-4 flex-shrink-0"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          clipRule="evenodd"
-                          d="M7.58393 5C8.28068 3.24301 9.99487 2 12.0009 2C14.007 2 15.7212 3.24301 16.4179 5H21.25C21.6642 5 22 5.33579 22 5.75C22 6.16421 21.6642 6.5 21.25 6.5H19.9532L19.0588 20.3627C18.9994 21.2835 18.2352 22 17.3124 22H6.68756C5.76481 22 5.0006 21.2835 4.94119 20.3627L4.04683 6.5H2.75C2.33579 6.5 2 6.16421 2 5.75C2 5.33579 2.33579 5 2.75 5H7.58393ZM9.26161 5C9.83935 4.09775 10.8509 3.5 12.0009 3.5C13.151 3.5 14.1625 4.09775 14.7403 5H9.26161Z"
+                    <button
+                      onClick={() =>
+                        selectedProfileId &&
+                        handleChatWithProfile(selectedProfileId)
+                      }
+                      disabled={
+                        isTTSLoading || isSpeaking || !selectedProfileId
+                      }
+                      className={`flex w-24 flex-col items-center gap-[1px] rounded-lg pb-1 pt-[6px] text-[10px] font-medium transition-colors ${
+                        isSpeaking
+                          ? "cursor-not-allowed bg-green-700 text-green-300"
+                          : isTTSLoading
+                            ? "cursor-not-allowed bg-yellow-700 text-yellow-300"
+                            : "cursor-pointer bg-gray-800 text-gray-300 hover:bg-blue-700 hover:text-blue-300"
+                      }`}
+                    >
+                      {isSpeaking ? (
+                        <svg
+                          className="h-4 w-4 flex-shrink-0 animate-pulse"
+                          viewBox="0 0 24 24"
                           fill="currentColor"
-                        />
-                      </svg>
-                      Trash
+                        >
+                          <path d="M12 2C13.1 2 14 2.9 14 4V12C14 13.1 13.1 14 12 14C10.9 14 10 13.1 10 12V4C10 2.9 10.9 2 12 2M19 10V12C19 15.3 16.3 18 13 18V20H11V18C7.7 18 5 15.3 5 12V10H7V12C7 14.2 8.8 16 11 16H13C15.2 16 17 14.2 17 12V10H19Z" />
+                        </svg>
+                      ) : isTTSLoading ? (
+                        <svg
+                          className="h-4 w-4 flex-shrink-0 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z" />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="h-4 w-4 flex-shrink-0"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M12 2C13.1 2 14 2.9 14 4V12C14 13.1 13.1 14 12 14C10.9 14 10 13.1 10 12V4C10 2.9 10.9 2 12 2M19 10V12C19 15.3 16.3 18 13 18V20H11V18C7.7 18 5 15.3 5 12V10H7V12C7 14.2 8.8 16 11 16H13C15.2 16 17 14.2 17 12V10H19Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      )}
+                      {isSpeaking
+                        ? "Speaking..."
+                        : isTTSLoading
+                          ? "Loading..."
+                          : "Chat with me"}
                     </button>
-                    <button className="flex w-12 flex-col items-center gap-[1px] rounded-lg bg-gray-800 pb-1 pt-[6px] text-[10px] font-medium text-gray-300 hover:bg-gray-700">
+                    <button
+                      onClick={async () => {
+                        if (isSpeaking || isTTSLoading) return;
+
+                        // 🧪 DEBUGGING CHOICE: Test TTS vs Test WAV Encoder
+                        const debugMode = "tts"; // Change to "wav-test" to test just WAV encoding
+
+                        if (debugMode === "wav-test") {
+                          // Test WAV encoder with a simple sine wave
+                          console.log(
+                            "🧪 Testing WAV encoder with synthetic sine wave...",
+                          );
+                          const sampleRate = 24000;
+                          const duration = 1; // 1 second
+                          const frequency = 440; // A4 note
+                          const samples = new Float32Array(
+                            sampleRate * duration,
+                          );
+
+                          for (let i = 0; i < samples.length; i++) {
+                            samples[i] =
+                              0.3 *
+                              Math.sin(
+                                (2 * Math.PI * frequency * i) / sampleRate,
+                              );
+                          }
+
+                          const { encodeWAV } = await import(
+                            "~/lib/wavEncoder"
+                          );
+                          const wavBlob = encodeWAV(samples, sampleRate);
+                          const audioUrl = URL.createObjectURL(wavBlob);
+                          const audio = new Audio(audioUrl);
+
+                          audio.onloadstart = () =>
+                            console.log("🎵 Sine wave loading...");
+                          audio.oncanplay = () =>
+                            console.log("✅ Sine wave ready");
+                          audio.onplay = () =>
+                            console.log("🎵 Sine wave playing");
+                          audio.onended = () => {
+                            console.log("✅ Sine wave completed");
+                            URL.revokeObjectURL(audioUrl);
+                          };
+                          audio.onerror = (e) => {
+                            console.error("❌ Sine wave failed:", e);
+                            URL.revokeObjectURL(audioUrl);
+                          };
+
+                          await audio.play();
+                          return;
+                        }
+
+                        // Regular TTS test
+                        const testTexts = [
+                          "hello", // Ultra simple test
+                          "Hello world", // Simple test
+                          "Hello there, this is a test.", // Medium test
+                          "Hi there! I'm Arnaud Ostrowski. I'm a Design Systems Lead based in Brussels, Belgium. I work at Caizen, Freelance, and Elia Group. My skills include React, Design Systems, Ai. You can find me on my website. Feel free to reach out if you'd like to connect!", // Full test
+                        ];
+
+                        // Start with simple test - change index to test different complexity
+                        const testText = testTexts[0]; // 0=simple, 1=medium, 2=full
+
+                        try {
+                          setIsSpeaking(true);
+                          setTtsError(null);
+
+                          const tts = getKittenTTS();
+
+                          // Auto-initialize if not ready
+                          if (!tts.isReady()) {
+                            console.log("🔄 TTS not ready, initializing...");
+                            setIsTTSLoading(true);
+                            await tts.init();
+                            setIsTTSLoading(false);
+                          }
+
+                          if (!tts.isReady()) {
+                            throw new Error("TTS failed to initialize");
+                          }
+
+                          console.log(
+                            "🧪 Testing TTS with hardcoded string:",
+                            testText,
+                          );
+                          await tts.speak(testText, "expr-voice-2-m", 1.0); // Try different voice
+                          console.log("✅ Test TTS completed successfully");
+                        } catch (error) {
+                          console.error("❌ Test TTS failed:", error);
+                          setTtsError(
+                            `Test TTS failed: ${error instanceof Error ? error.message : String(error)}`,
+                          );
+                        } finally {
+                          setIsSpeaking(false);
+                        }
+                      }}
+                      disabled={isSpeaking || isTTSLoading}
+                      className={`flex w-12 flex-col items-center gap-[1px] rounded-lg pb-1 pt-[6px] text-[10px] font-medium transition-colors ${
+                        isSpeaking || isTTSLoading
+                          ? "cursor-not-allowed bg-orange-700 text-orange-300"
+                          : "cursor-pointer bg-gray-800 text-gray-300 hover:bg-orange-700 hover:text-orange-300"
+                      }`}
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-4 w-4"
@@ -1088,12 +1419,41 @@ export default function ProfileSearchClient({
                           fill="currentColor"
                         />
                       </svg>
-                      Report
+                      Test
                     </button>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Floating Debug Button */}
+            <button
+              onClick={() => setIsDebugPanelOpen(true)}
+              className="fixed bottom-8 right-8 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-colors hover:bg-blue-700"
+              title="Open TTS Debug Panel"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"
+                />
+              </svg>
+            </button>
+
+            {/* Debug Panel */}
+            {/* <TTSDebugPanel
+              isOpen={isDebugPanelOpen}
+              onClose={() => setIsDebugPanelOpen(false)}
+              steps={steps}
+              onClear={clearSteps}
+            /> */}
           </>
         )}
       </InstantSearch>
