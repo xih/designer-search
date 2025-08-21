@@ -1306,56 +1306,7 @@ export default function ProfileSearchClient({
                       onClick={async () => {
                         if (isSpeaking || isTTSLoading) return;
 
-                        // 🧪 DEBUGGING CHOICE: Test TTS vs Test WAV Encoder
-                        const debugMode: "tts" | "wav-test" = "tts"; // Change to "wav-test" to test just WAV encoding
-
-                        if (debugMode === "wav-test") {
-                          // Test WAV encoder with a simple sine wave
-                          console.log(
-                            "🧪 Testing WAV encoder with synthetic sine wave...",
-                          );
-                          const sampleRate = 24000;
-                          const duration = 1; // 1 second
-                          const frequency = 440; // A4 note
-                          const samples = new Float32Array(
-                            sampleRate * duration,
-                          );
-
-                          for (let i = 0; i < samples.length; i++) {
-                            samples[i] =
-                              0.3 *
-                              Math.sin(
-                                (2 * Math.PI * frequency * i) / sampleRate,
-                              );
-                          }
-
-                          const { encodeWAV } = await import(
-                            "~/lib/wavEncoder"
-                          );
-                          const wavBlob = encodeWAV(samples, sampleRate);
-                          const audioUrl = URL.createObjectURL(wavBlob);
-                          const audio = new Audio(audioUrl);
-
-                          audio.onloadstart = () =>
-                            console.log("🎵 Sine wave loading...");
-                          audio.oncanplay = () =>
-                            console.log("✅ Sine wave ready");
-                          audio.onplay = () =>
-                            console.log("🎵 Sine wave playing");
-                          audio.onended = () => {
-                            console.log("✅ Sine wave completed");
-                            URL.revokeObjectURL(audioUrl);
-                          };
-                          audio.onerror = (e) => {
-                            console.error("❌ Sine wave failed:", e);
-                            URL.revokeObjectURL(audioUrl);
-                          };
-
-                          await audio.play();
-                          return;
-                        }
-
-                        // Regular TTS test
+                        // TTS test
                         const testTexts = [
                           "hello", // Ultra simple test
                           "Hello world", // Simple test
