@@ -29,12 +29,20 @@ function serializeError(error: unknown): string {
   if (typeof error === 'number' || typeof error === 'boolean') {
     return String(error);
   }
+  if (typeof error === 'bigint') {
+    return error.toString();
+  }
   if (error == null) {
     return String(error);
   }
-  // For objects, try JSON.stringify as fallback
+  // For objects, try JSON.stringify with BigInt replacer
   try {
-    return JSON.stringify(error);
+    return JSON.stringify(error, (key, value) => {
+      if (typeof value === 'bigint') {
+        return value.toString();
+      }
+      return value;
+    });
   } catch {
     return '[Unserializable Object]';
   }
@@ -312,7 +320,7 @@ export class KittenTTSWeb {
     
     // CRITICAL: Working demo uses regular numbers, let's try that
     const inputIds = new BigInt64Array(tokenIds.map(id => BigInt(id)));
-    logDebug("🔍 [DEBUG] After BigInt conversion:", Array.from(inputIds));
+    logDebug(`🔍 [DEBUG] After BigInt conversion: [${Array.from(inputIds).map(n => n.toString()).join(', ')}]`);
 
     logDebug("🔧 [PREP 3/4] Loading voice embedding...");
     // Get voice embedding - use [0] index like working demo
@@ -363,12 +371,12 @@ export class KittenTTSWeb {
       style: result.style.type, 
       speed: result.speed.type,
     });
-    logDebug("🔧 [PREP 4/4] Sample tensor data:", {
-      input_ids: Array.from(result.input_ids.data.slice(0, 10)),
-      input_ids_full: Array.from(result.input_ids.data),
-      style: Array.from(result.style.data.slice(0, 5)),
-      speed: Array.from(result.speed.data),
-    });
+    logDebug(`🔧 [PREP 4/4] Sample tensor data: {
+      input_ids: [${Array.from(result.input_ids.data.slice(0, 10)).map(n => n.toString()).join(', ')}],
+      input_ids_full_length: ${result.input_ids.data.length},
+      style: [${Array.from(result.style.data.slice(0, 5)).join(', ')}],
+      speed: [${Array.from(result.speed.data).join(', ')}]
+    }`);
     
     // Log critical debugging info
     logDebug("🔍 [DEBUG] Critical model input analysis:");
