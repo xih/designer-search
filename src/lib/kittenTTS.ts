@@ -37,11 +37,11 @@ function serializeError(error: unknown): string {
   }
   // For objects, try JSON.stringify with BigInt replacer
   try {
-    return JSON.stringify(error, (key, value) => {
+    return JSON.stringify(error, (_key, value) => {
       if (typeof value === 'bigint') {
         return value.toString();
       }
-      return value;
+      return value as string | number | boolean | null | undefined | object;
     });
   } catch {
     return '[Unserializable Object]';
