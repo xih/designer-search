@@ -18,6 +18,8 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.23",
+    "@ai-sdk/react": "^2.0.29",
     "@babel/runtime": "^7.27.6",
     "@clerk/nextjs": "^6.12.5",
     "@deck.gl/core": "^9.1.14",
@@ -50,6 +52,7 @@
     "@types/pg": "^8.11.11",
     "@types/three": "^0.176.0",
     "@vercel/analytics": "^1.5.0",
+    "ai": "^5.0.29",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.5.0",
@@ -77,6 +80,7 @@
     "react-map-gl": "^8.0.4",
     "react-markdown": "^10.1.0",
     "react-use-measure": "^2.1.7",
+    "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "server-only": "^0.0.1",
     "shiki": "^3.4.0",
@@ -86,9 +90,10 @@
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.176.0",
     "typesense-instantsearch-adapter": "^2.9.0",
+    "use-stick-to-bottom": "^1.1.1",
     "vaul": "^1.1.2",
     "zapatos": "^6.5.0",
-    "zod": "^3.23.3",
+    "zod": "^3.25.76",
     "zod-form-data": "^2.0.7"
   },
   "devDependencies": {

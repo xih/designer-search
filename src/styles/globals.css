@@ -147,3 +147,14 @@
 .transform-3d {
   transform-style: preserve-3d;
 }
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
