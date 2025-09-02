@@ -28,7 +28,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 
 type MessageComponentProps = {
   message: UIMessage;
@@ -42,7 +42,7 @@ export const MessageComponent = memo(
     return (
       <Message
         className={cn(
-          "mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-10",
+          "mx-auto flex w-full max-w-3xl flex-col gap-2 px-2 md:px-0",
           isAssistant ? "items-start" : "items-end",
         )}
       >
@@ -133,12 +133,27 @@ ErrorMessage.displayName = "ErrorMessage";
 
 function ConversationPromptInput() {
   const [input, setInput] = useState("");
+  const [initialMessageShown, setInitialMessageShown] = useState(false);
 
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, status, error, setMessages } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/primitives/chatbot",
     }),
   });
+
+  // Add initial assistant message when component mounts
+  useEffect(() => {
+    if (!initialMessageShown && messages.length === 0) {
+      setMessages([
+        {
+          id: "initial-greeting",
+          role: "assistant",
+          parts: [{ type: "text", text: "How's it going" }],
+        },
+      ]);
+      setInitialMessageShown(true);
+    }
+  }, [messages.length, initialMessageShown, setMessages]);
 
   const handleSubmit = () => {
     if (!input.trim()) return;
@@ -150,7 +165,8 @@ function ConversationPromptInput() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <ChatContainerRoot className="relative flex-1 space-y-0 overflow-y-auto">
-        <ChatContainerContent className="space-y-12 px-4 py-12">
+        {/* Vertical spacing between messages is controlled by space-y-12 (48px) */}
+        <ChatContainerContent className="space-y- px-4 py-12">
           {messages.map((message, index) => {
             const isLastMessage = index === messages.length - 1;
 
@@ -167,7 +183,7 @@ function ConversationPromptInput() {
           {status === "error" && error && <ErrorMessage error={error} />}
         </ChatContainerContent>
       </ChatContainerRoot>
-      <div className="inset-x-0 bottom-0 mx-auto w-full max-w-3xl shrink-0 px-3 pb-3 md:px-5 md:pb-5">
+      <div className="inset-x-0 bottom-0 mx-auto w-full max-w-3xl shrink-0 px-4 pb-3 md:px-4 md:pb-5">
         <PromptInput
           isLoading={status !== "ready"}
           value={input}
