@@ -15,7 +15,18 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run src/tests/unit",
+    "test:integration": "vitest run src/tests/integration",
+    "test:components": "vitest run src/tests/components",
+    "test:lib": "vitest run src/tests/lib",
+    "test:utils": "vitest run src/tests/utils",
+    "test:all": "vitest run --reporter=verbose",
+    "test:silent": "vitest run --reporter=minimal"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.23",

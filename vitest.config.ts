@@ -15,10 +15,31 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./.storybook/vitest.setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: [
+      "src/**/*.test.{ts,tsx}",
+      "src/tests/**/*.test.{ts,tsx}"
+    ],
     coverage: {
       provider: "v8",
-      reporter: ["text", "json", "html"],
+      reporter: ["text", "json", "html", "lcov"],
+      exclude: [
+        "node_modules/",
+        "src/tests/",
+        "**/*.d.ts",
+        "**/*.config.*",
+        "**/coverage/**",
+        ".storybook/",
+        "**/*.stories.*",
+      ],
+      // Thresholds can be enabled when you have more comprehensive tests
+      // thresholds: {
+      //   global: {
+      //     branches: 80,
+      //     functions: 80,
+      //     lines: 80,
+      //     statements: 80
+      //   }
+      // }
     },
   },
   resolve: {
