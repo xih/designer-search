@@ -1,7 +1,7 @@
 import { cn } from "~/lib/utils"
 import { marked } from "marked"
 import { memo, useId, useMemo } from "react"
-import ReactMarkdown, { Components } from "react-markdown"
+import ReactMarkdown, { type Components } from "react-markdown"
 import remarkBreaks from "remark-breaks"
 import remarkGfm from "remark-gfm"
 import { CodeBlock, CodeBlockCode } from "./code-block"
@@ -20,8 +20,8 @@ function parseMarkdownIntoBlocks(markdown: string): string[] {
 
 function extractLanguage(className?: string): string {
   if (!className) return "plaintext"
-  const match = className.match(/language-(\w+)/)
-  return match ? match[1] : "plaintext"
+  const match = /language-(\w+)/.exec(className)
+  return match?.[1] ?? "plaintext"
 }
 
 const INITIAL_COMPONENTS: Partial<Components> = {

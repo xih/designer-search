@@ -49,13 +49,18 @@ export default function FloatingChatSystem({
             right: `${rightPosition}px`,
           }}
         >
-          <ChatWindow
-            id={system.sessions[0].id}
-            minimized={system.sessions[0].minimized}
-            onClose={() => handleRemoveSession(system.sessions[0].id)}
-            onToggleMinimize={() => handleToggleMinimize(system.sessions[0].id)}
-            position={systemIndex}
-          />
+          {(() => {
+            const session = system.sessions[0];
+            return (
+              <ChatWindow
+                id={session.id}
+                minimized={session.minimized}
+                onClose={() => handleRemoveSession(session.id)}
+                onToggleMinimize={() => handleToggleMinimize(session.id)}
+                position={systemIndex}
+              />
+            );
+          })()}
         </div>
       )}
     </>

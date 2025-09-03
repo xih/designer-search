@@ -23,17 +23,19 @@ type PromptInputContextType = {
   maxHeight: number | string
   onSubmit?: () => void
   disabled?: boolean
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  textareaRef: React.RefObject<HTMLTextAreaElement>
 }
 
 const PromptInputContext = createContext<PromptInputContextType>({
   isLoading: false,
   value: "",
-  setValue: () => {},
+  setValue: () => {
+    // Default empty function
+  },
   maxHeight: 240,
   onSubmit: undefined,
   disabled: false,
-  textareaRef: React.createRef<HTMLTextAreaElement>(),
+  textareaRef: { current: null },
 })
 
 function usePromptInput() {
@@ -63,7 +65,7 @@ function PromptInput({
   onSubmit,
   children,
 }: PromptInputProps) {
-  const [internalValue, setInternalValue] = useState(value || "")
+  const [internalValue, setInternalValue] = useState(value ?? "")
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   const handleChange = (newValue: string) => {
@@ -119,7 +121,7 @@ function PromptInputTextarea({
       typeof maxHeight === "number"
         ? `${Math.min(textareaRef.current.scrollHeight, maxHeight)}px`
         : `min(${textareaRef.current.scrollHeight}px, ${maxHeight})`
-  }, [value, maxHeight, disableAutosize])
+  }, [value, maxHeight, disableAutosize, textareaRef])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

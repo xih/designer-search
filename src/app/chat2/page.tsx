@@ -9,7 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Plus, X } from "lucide-react";
 
 function ChatSystemsManager() {
-  const [chatSystems, setChatSystems] = useAtom(chatSystemsAtom);
+  const [chatSystems] = useAtom(chatSystemsAtom);
   const addChatSystem = useSetAtom(addChatSystemAtom);
   const removeChatSystem = useSetAtom(removeChatSystemAtom);
 

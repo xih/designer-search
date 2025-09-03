@@ -28,7 +28,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useRef } from "react";
 
 type MessageComponentProps = {
   message: UIMessage;
@@ -133,27 +133,17 @@ ErrorMessage.displayName = "ErrorMessage";
 
 function ConversationPromptInput() {
   const [input, setInput] = useState("");
-  const [initialMessageShown, setInitialMessageShown] = useState(false);
+  const hasInitialized = useRef(false);
 
-  const { messages, sendMessage, status, error, setMessages } = useChat({
+  const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
       api: "/api/primitives/chatbot",
     }),
+    onFinish: () => {
+      // Mark as initialized after first message completes
+      hasInitialized.current = true;
+    },
   });
-
-  // Add initial assistant message when component mounts
-  useEffect(() => {
-    if (!initialMessageShown && messages.length === 0) {
-      setMessages([
-        {
-          id: "initial-greeting",
-          role: "assistant",
-          parts: [{ type: "text", text: "How's it going" }],
-        },
-      ]);
-      setInitialMessageShown(true);
-    }
-  }, [messages.length, initialMessageShown, setMessages]);
 
   const handleSubmit = () => {
     if (!input.trim()) return;
@@ -162,11 +152,42 @@ function ConversationPromptInput() {
     setInput("");
   };
 
+  const fullText =
+    "Name: Sharon Nyarko\nTitle: Product Designer\nAbout: Hi, I'm Sharon—I am a product designer who has worked on advertiser experiences, marketplaces, internal tooling & identity products, and design systems.\n\nGet in touch if you think we'd work well together. (I'm currently seeking speaking and other collaboration projects.)\nLocation: Toronto\nProject: Intro to Twitter for Business\nProject: Zero, a plastic-free grocery-delivery startup, to launch in LA\nWork: Designer at AWI\nWork: Product Designer at Twitter\nWork: Product Designer at Zero Grocery\nWork: Product Designer at Microsoft\nWork: Product Specialist at Apple\nEducation: (Honours) Bachelor of Arts at University of Toronto\nEducation: International Baccalaureate Diploma at SOS-Hermann Gmeiner International College";
+
+  const prompt = `
+  You are a helpful assistant.
+  You are going to ask the user 5 questions to start a meaningful conversation.
+  The user's profile is: ${fullText}
+
+  Ask 1 question that is relevant to the user's profile.
+  
+  and respond back in an ordered list with 1 in markdown format.
+
+  Some examples of questions you could ask them: 
+
+  if they went to berkeley, ask them what major they were in, then ask them how was it studying at their major's building. 
+
+  if they worked at a employer, ask them about a product they launched.
+  `;
+
+  // Send initial message on first render only
+  if (!hasInitialized.current && messages.length === 0 && status === "ready") {
+    console.log("Sending initial prompt:", prompt);
+    hasInitialized.current = true;
+    void sendMessage({ text: prompt });
+  }
+
+  // Debug logging
+  console.log("Chat status:", status);
+  console.log("Messages:", messages);
+  console.log("Error:", error);
+
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <ChatContainerRoot className="relative flex-1 space-y-0 overflow-y-auto">
         {/* Vertical spacing between messages is controlled by space-y-12 (48px) */}
-        <ChatContainerContent className="space-y- px-4 py-12">
+        <ChatContainerContent className="space-y-8 px-4 py-12">
           {messages.map((message, index) => {
             const isLastMessage = index === messages.length - 1;
 
